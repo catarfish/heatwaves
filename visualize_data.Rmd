@@ -1,0 +1,126 @@
+---
+title: "visualize_data"
+author: "Catarina Pien"
+date: '2022-10-04'
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# Heatwaves Analysis
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r,echo = FALSE, message = FALSE, warning = FALSE}
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(tidyr)
+```
+
+
+
+## Questions
+### Logistics 
+
+1. What is the definition of a heatwave? 
+    a) **“The World Meteorological Organization defines it as five or more consecutive days during which the daily maximum temperature surpasses the average maximum temperature by 5 °C (9 °F) or more.”**
+    b) **this indicator defines a heat wave as a period of two or more consecutive days where the daily minimum apparent temperature at a particular weather station is higher than the 85th percentile of historical July and August temperatures for that city. Historical July and August baseline temperatures are analyzed for a base period of 1981–2010, which NCEI chose for consistency with other climatology metrics. Using the 85th percentile of July and August temperatures results in a threshold that equates to the nine hottest July and August days in an average year during that 30-year window. These are likely among the nine hottest days of the year.**
+    c) What is the average maximum temperature? Delta-wide mean over 10 years? Just July and August?
+    d) What is the equivalence of 5C in water temp? Look at relationship of air vs. water? 
+    e) minimum or maximum temperatures? 
+2. What stations do we want to look at? 
+
+### Analyses/Visualizations
+
+3. When do heatwaves occur? (Seasonality)
+4. Where do heatwaves occur? (Regions)
+5. Has frequency, duration (hours vs total days in a row), length of heat wave season, intensity changed over time?
+
+### References
+
+* https://www.epa.gov/climate-indicators/climate-change-indicators-heat-waves
+* Habeeb, D., J. Vargo, and B. Stone, Jr. 2015. Rising heat wave trends in large U.S. cities. Nat. Hazards 76(3):1651–1665. doi:10.1007/s11069-014-1563-z.
+
+## Read data
+```{r, echo = FALSE}
+airtemp <- readRDS("data_raw/AirTemp.rds")
+sta <- unique(airtemp$station)
+hist(airtemp$airtemp_F)
+glimpse(airtemp)
+
+wtemp <- readRDS("data_raw/tempToUse_20210811.rds") %>%
+  filter(Station %in% sta) %>%
+  rename(station = Station,
+         datetime = Datetime, 
+         wtemp = Temp)
+glimpse(wtemp)
+unique(wtemp$station)
+
+temps <- left_join(wtemp, airtemp, by = c("datetime", "station"))
+subset <- filter(temps, WY >2018)
+```
+
+```{r}
+ggplot(subset) + geom_point(aes(x = airtemp_C, y = wtemp)) + facet_wrap(~station)
+```
+
+## Calculate long term averages
+```{r, echo = FALSE}
+maxtemps <- temps %>%
+  group_by(Region, WYType2_Sac, station, year, WY, month, date) %>%
+  summarize(maxAir = max(airtemp_C),
+            maxWater = max(wtemp)) %>%
+  ungroup()
+
+mintemps <- temps %>%
+  group_by(Region, WYType2_Sac, station, year, WY, month, date) %>%
+  summarize(minAir = min(airtemp_C),
+            minWater = min(wtemp)) %>%
+  ungroup()
+
+# based on min
+percentileTemps <- mintemps %>%
+  filter(month %in% c(7, 8)) %>%
+  group_by(station) %>%
+  summarize(avgAir = quantile(minAir, 0.85),
+           avgWater = quantile(minWater, 0.85)) %>%
+  ungroup() %>%
+  mutate(type = "percentile")
+
+meanmaxannual <- maxtemps %>%
+  group_by(station) %>%
+  summarize(avgAir = mean(maxAir, na.rm = TRUE),
+            avgWater = mean(maxWater, na.rm = TRUE)) %>%
+  ungroup()%>%
+  mutate(type = "annual")
+
+meanmax6month <- maxtemps %>%
+  filter(month %in% c(5, 6, 7, 8, 9, 10)) %>%
+  group_by(station) %>%
+  summarize(avgAir = mean(maxAir, na.rm = TRUE),
+            avgWater = mean(maxWater, na.rm = TRUE)) %>%
+  ungroup()%>%
+  mutate(type = "sixmonth")
+
+meanmax2month <- maxtemps %>%
+  filter(month %in% c(7, 8)) %>%
+  group_by(station) %>%
+  summarize(avgAir = mean(maxAir, na.rm = TRUE),
+            avgWater = mean(maxWater, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(type = "twomonth")
+
+# Compare all the data
+alldata <- bind_rows(meanmaxannual, meanmax6month, meanmax2month, percentileTemps) 
+```
+
+Compare different averages 
+```{r, echo = TRUE}
+plot_air <- ggplot(alldata) + geom_point(aes(station, avgAir, color = type), size = 2) + theme_bw()
+plot_water <- ggplot(alldata) + geom_point(aes(station, avgWater, color = type), size = 2) + theme_bw()
+
+library(patchwork)
+plot_air + plot_water + plot_layout(guides = "collect")
+```
+

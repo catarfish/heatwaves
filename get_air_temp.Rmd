@@ -1,0 +1,99 @@
+---
+title: "get_air_temp"
+author: "Catarina Pien"
+date: '2022-10-04'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(lubridate)
+```
+
+Stations with air temp: 
+MRZ, MAL, ANH, RVB, RRI, SRH, MSD, SJR
+
+
+```{r airtemp dl, eval = FALSE, message = FALSE, warning = FALSE, fig.width = 12}
+library(data.table) #rbindlist()
+library(CDECRetrieve)#cdec_datasets
+
+# Download air temperature data
+staAir <- c("SJR", "MSD", "MAL", "ANH", "RVB")
+start <- "1986-01-01"
+end <- "2022-09-30"
+sensor1 <- "4" #air temp
+
+### Download data, bind, write --------------------------------------------
+TempAir_Raw <- lapply(staAir, 
+                 function(x){
+                   cdec_query(station = x,
+                              sensor_num = sensor1,
+                              dur_code = "H",
+                              start_date = start,
+                              end_date = end)
+                 })
+
+TempAir_Raw_df <- bind_rows(TempAir_Raw) # bind rows into data frame
+str(TempAir_Raw_df)
+
+TempAir_Raw_df$date <- date(TempAir_Raw_df$datetime)
+TempAir_Raw_df$month <- (month(TempAir_Raw_df$datetime))
+TempAir_Raw_df$year <- (year(TempAir_Raw_df$datetime))
+
+# Change to Celsius
+TempAir <- TempAir_Raw_df %>%
+  rename(station = location_id,
+         airtemp_F = parameter_value) %>%
+  mutate(airtemp_C = round((airtemp_F-32)/1.8,1)) %>%
+  select(-c(parameter_cd, agency_cd)) %>%
+  filter(!is.na(airtemp_F),
+         !is.na(datetime))%>%
+  filter(airtemp_F <130 & airtemp_F >10)
+```
+
+```{r}
+staAir2 = c("RRI", "MRZ")
+TempAir_Event <- lapply(staAir2, 
+                 function(x){
+                   cdec_query(station = x,
+                              sensor_num = sensor1,
+                              dur_code = "E",
+                              start_date = start,
+                              end_date = end)
+                 })
+
+TempAir_Event_df <- bind_rows(TempAir_Event) # bind rows into data frame
+TempAir_Event_df <- TempAir_Event_df %>%
+  mutate(date = date(datetime),
+         month = month(datetime),
+         year = year(datetime),
+         hour = hour(datetime))
+
+# Change to Celsius
+TempAirE <- TempAir_Event_df %>%
+  rename(station = location_id,
+         airtemp_F = parameter_value) %>%
+  mutate(airtemp_C = round((airtemp_F-32)/1.8,1)) %>%
+  select(-c(parameter_cd, agency_cd)) %>%
+  filter(!is.na(airtemp_F),
+         !is.na(datetime))%>%
+  filter(airtemp_F <130 & airtemp_F >10) %>%
+  group_by(station, date, hour) %>%
+  slice(1) %>%
+  ungroup() %>%
+  select(-hour)
+```
+
+```{r}
+hourly_air <- rbind(TempAirE, TempAir)
+```
+
+```{r}
+saveRDS(hourly_air, "data_raw/AirTemp.rds")
+```
+

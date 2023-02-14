@@ -53,7 +53,11 @@ dailytemp <- tempdata %>%
             maxTemp = max(Temp)) %>%
   mutate(Month = month(Date),
          Year = year(Date),
-         WY = ifelse(Month > 9, Year + 1, Year)) %>%
+         WY = ifelse(Month > 9, Year + 1, Year),
+         Season = case_when(Month %in% c(10, 11, 12) ~ "Fall",
+                            Month %in% c(1, 2,3) ~ "Winter",
+                            Month %in% c(4, 5, 6) ~ "Spring",
+                            Month %in% c(7, 8, 9) ~ "Summer")) %>%
   ungroup()
 ```
 
@@ -62,23 +66,31 @@ dailytemp <- tempdata %>%
 dailytemp %>%
   group_by(Station, Year) %>%
   summarize(n = n()) %>%
-  ggplot() + geom_tile(aes(Year, Station, fill = n))
+  ggplot() + geom_tile(aes(Year, Station, fill = n), color = "black") +
+  theme_bw()
 ```
 
 # Filter data
 
-* May-September
-* 2000 +
+* All months 
+* 2002 +
 * Calculate the mean max, mean, min across all years for each station?
+* Take a look at patterns across months and stations to decide what to group
 ```{r}
-summermeans = dailytemp %>%
-  filter(Year>1999) %>%
-  filter(Month %in% c(5, 6, 7, 8, 9)) %>%
+totalTempMean = dailytemp %>%
+  filter(Year>2001) %>%
+  #filter(Month %in% c(5, 6, 7, 8, 9, 10)) %>%
   group_by(Station, Month) %>%
-  summarize(meanMax = mean(maxTemp),
-          meanMean = mean(meanTemp),
-            meanMin = mean(minTemp)) %>%
+  mutate(totalMeanMax = mean(maxTemp),
+          totalMeanMean = mean(meanTemp),
+            totalMeanMin = mean(minTemp)) %>%
+  ungroup()%>%
+  group_by(Station, Month, totalMeanMax, totalMeanMean, totalMeanMin, WY) %>%
+  summarize(annualMeanMax = mean(maxTemp),
+          annualMeanMean = mean(meanTemp),
+            annualMeanMin = mean(minTemp)) %>%
   ungroup()
+
 
 summertemp = dailytemp %>%
   filter(Year>1999) %>%
@@ -93,11 +105,18 @@ summertemp = dailytemp %>%
 
 # Calculate percentiles
 
+* Calculate monthly and seasonal percentiles by station or by Delta 
+* 3 days above percentiles 
+```{r}
+
+```
+
+
 # Plots
 ```{r}
-ggplot(summertemp) + geom_boxplot(aes(fYear, meanTemp)) + facet_wrap(~Month) +
-   theme_bw() + theme(axis.text.x = element_text(angle = 90))
-ggplot(summertemp) + geom_boxplot(aes(fYear, maxTemp))+ facet_wrap(~Month)+ theme_bw() + theme(axis.text.x = element_text(angle = 90))
-ggplot(summertemp) + geom_boxplot(aes(fYear, minTemp))+ facet_wrap(~Month)+ theme_bw() + theme(axis.text.x = element_text(angle = 90))
+(ggplot(summertemp) + geom_boxplot(aes(fYear, meanTemp)) + facet_wrap(~Month) +
+   theme_bw() + theme(axis.text.x = element_text(angle = 90)))
+(ggplot(summertemp) + geom_boxplot(aes(fYear, maxTemp))+ facet_wrap(~Month)+ theme_bw() + theme(axis.text.x = element_text(angle = 90)))
+(ggplot(summertemp) + geom_boxplot(aes(fYear, minTemp))+ facet_wrap(~Month)+ theme_bw() + theme(axis.text.x = element_text(angle = 90)))
 ```
 

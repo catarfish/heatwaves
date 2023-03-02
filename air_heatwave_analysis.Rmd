@@ -1,0 +1,98 @@
+---
+title: "Air temperature heatwaves"
+author: "Sam Bashevkin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(dplyr)
+library(tidyr)
+library(readr)
+library(lubridate)
+library(ggplot2)
+library(zipcodeR)
+```
+
+Find zip codes of interest
+```{r}
+zips<-bind_rows(
+  search_city('Stockton','CA'),
+  search_city('Sacramento','CA'),
+  search_city('West Sacramento','CA'),
+  search_city('Pittsburg','CA'),
+  search_city('Isleton','CA'))%>%
+  select(zipcode, major_city)
+```
+
+Load temperature data
+```{r}
+temp_max_raw<-read_csv("data_clean/CAzip_tmmx_99to20.csv", 
+                   col_types=cols_only(zip="c", date="D",
+                               lat="d", lon="d", tmmx_C="d"))
+
+temp_max<-temp_max_raw%>%
+  filter(zip%in%zips$zipcode)%>%
+  left_join(zips, by=c("zip"="zipcode"))%>%
+  group_by(date, major_city)%>%
+  summarise(temp_max=max(tmmx_C), .groups="drop")%>%
+  mutate(Month=month(date),
+         Year=year(date))%>%
+  filter(!(Month==12 & mday(date)==31))%>% # For some reason, many temps on Dec 31 are very high, so removing all of them
+  group_by(Month, major_city)%>%
+  mutate(temp_max_q99=quantile(temp_max, 0.99),
+         temp_max_q95=quantile(temp_max, 0.95),
+         temp_max_q90=quantile(temp_max, 0.90))%>%
+  ungroup()%>%
+  group_by(major_city)%>%
+  mutate(temp_max_l1=lag(temp_max, 1, order_by=date),
+         temp_max_l2=lag(temp_max, 2, order_by=date),
+         heatwave_99=if_else(temp_max>temp_max_q99 & temp_max_l1>temp_max_q99 & temp_max_l2>temp_max_q99, TRUE, FALSE),
+         heatwave_95=if_else(temp_max>temp_max_q95 & temp_max_l1>temp_max_q95 & temp_max_l2>temp_max_q95, TRUE, FALSE),
+         heatwave_90=if_else(temp_max>temp_max_q90 & temp_max_l1>temp_max_q90 & temp_max_l2>temp_max_q90, TRUE, FALSE))
+
+heatwave_sum<-temp_max%>%
+  group_by(major_city, Month)%>%
+  summarise(freq_99=sum(heatwave_99)/n(),
+            freq_95=sum(heatwave_95)/n(),
+            freq_90=sum(heatwave_90)/n(),
+            .groups="drop")%>%
+  pivot_longer(cols = c(freq_99, freq_95, freq_90), values_to="heatwave_freq", names_to="quantile", names_prefix="freq_")%>%
+  mutate(quantile=as.integer(quantile),
+         Month=month(Month, label=T))
+```
+
+Plot temperatures
+```{r, fig.height=12, fig.width=10}
+ggplot(temp_max, aes(x=yday(date), y=temp_max))+
+  geom_point()+
+  facet_grid(Year~major_city)+
+  theme_bw()
+```
+
+Plot temps with heat waves
+```{r, fig.height=12, fig.width=10}
+ggplot(temp_max, aes(x=date, y=temp_max))+
+  geom_point()+
+  geom_vline(data=filter(temp_max, heatwave_90), aes(xintercept=date), color="chartreuse3")+
+  geom_vline(data=filter(temp_max, heatwave_95), aes(xintercept=date), color="darkorchid4")+
+  geom_vline(data=filter(temp_max, heatwave_99), aes(xintercept=date), color="red")+
+  facet_grid(major_city~Month)+
+  theme_bw()
+```
+
+Plot heat wave frequency
+```{r, fig.height=12, fig.width=10}
+ggplot(heatwave_sum, aes(x=Month, y=heatwave_freq, fill=major_city))+
+  geom_bar(position=position_dodge(), stat = "identity")+
+  facet_wrap(~quantile)+
+  scale_y_continuous(expand=expansion(0,0))+
+  scale_fill_viridis_d()+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+

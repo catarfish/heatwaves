@@ -45,7 +45,8 @@ temp_max_raw<-read_csv("data_clean/CAzip_tmmx_99to20.csv",
   left_join(zips, by=c("zip"="zipcode"))%>%
   group_by(date, major_city)%>%
   summarise(temp_max=max(tmmx_C), .groups="drop")%>%
-  mutate(Month=month(date),
+  mutate(major_city=factor(major_city, levels=c("Pittsburg", "Isleton", "West Sacramento", "Sacramento", "Stockton")),
+         Month=month(date),
          Year=year(date))
 
 temp_max<-temp_max_raw%>%
@@ -62,8 +63,7 @@ temp_max<-temp_max_raw%>%
          heatwave_95=if_else(temp_max>temp_max_q95 & temp_max_l1>temp_max_q95 & temp_max_l2>temp_max_q95, TRUE, FALSE),
          heatwave_90=if_else(temp_max>temp_max_q90 & temp_max_l1>temp_max_q90 & temp_max_l2>temp_max_q90, TRUE, FALSE))%>%
   ungroup()%>%
-  mutate(major_city=factor(major_city, levels=c("Pittsburg", "Isleton", "West Sacramento", "Sacramento", "Stockton")),
-         Month=month(Month, label=T))
+  mutate(Month=month(Month, label=T))
 
 heatwave_sum_month<-temp_max%>%
   group_by(major_city, Month)%>%

@@ -7,15 +7,11 @@ editor_options:
   chunk_output_type: console
 ---
 
+# Heatwave Analysis for Water Temperature Data 
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
-
-Questions 
-* Definitions of the baseline 
-- Monthly station mean across years? Or delta-wide?
-
-
 
 ```{r}
 library(dplyr)
@@ -26,15 +22,16 @@ library(sf)
 library(mapview)
 ```
 
-# Read data - filter to stations of interest
+## Read data - filter to stations of interest
 ```{r}
 stations <- c("RRI", "CLL", "SRH", "GYS", "MRZ", "VER", "RIV", "JER")
 tempdata <- readRDS("data_clean/Temp_filtered.rds") %>%
-  filter(Station %in% stations)
+  filter(Station %in% stations) %>%
+  rename(date = Date)
 latlons <- read.csv("https://portal.edirepository.org/nis/dataviewer?packageid=edi.591.2&entityid=a059f5eea4f8500fe1a43566451ec593")
 ```
 
-# Make map
+## Make map
 ```{r}
 sta_locations_sf <- latlons %>%
   filter(Station %in% stations) %>%
@@ -44,24 +41,25 @@ sta_locations_sf <- latlons %>%
 mapview::mapView(sta_locations_sf, zcol = "Station")
 ```
 
-# Add parameters
+## Add parameters
 ```{r}
 dailytemp <- tempdata %>%
-  group_by(Station, Date) %>%
-  summarize(minTemp = min(Temp),
-            meanTemp = mean(Temp),
-            maxTemp = max(Temp)) %>%
-  mutate(Month = month(Date),
-         Year = year(Date),
+  group_by(Station, date) %>%
+  summarize(temp_min = min(Temp),
+            temp_mean = mean(Temp),
+            temp_max = max(Temp)) %>%
+  mutate(Month = month(date),
+         fMonth = factor(Month),
+         Year = year(date),
          WY = ifelse(Month > 9, Year + 1, Year),
          Season = case_when(Month %in% c(10, 11, 12) ~ "Fall",
                             Month %in% c(1, 2,3) ~ "Winter",
                             Month %in% c(4, 5, 6) ~ "Spring",
                             Month %in% c(7, 8, 9) ~ "Summer")) %>%
-  ungroup()
+  ungroup() 
 ```
 
-# Look at data
+## Look at data
 ```{r}
 dailytemp %>%
   group_by(Station, Year) %>%
@@ -70,53 +68,182 @@ dailytemp %>%
   theme_bw()
 ```
 
-# Filter data
+## Filter data
 
 * All months 
 * 2002 +
-* Calculate the mean max, mean, min across all years for each station?
-* Take a look at patterns across months and stations to decide what to group
+* Calculate quantiles for mean, max, min
+* Classify as heatwave if 3+ days over quantiles
 ```{r}
-totalTempMean = dailytemp %>%
+temp_quantiles = dailytemp %>%
   filter(Year>2001) %>%
   #filter(Month %in% c(5, 6, 7, 8, 9, 10)) %>%
-  group_by(Station, Month) %>%
-  mutate(totalMeanMax = mean(maxTemp),
-          totalMeanMean = mean(meanTemp),
-            totalMeanMin = mean(minTemp)) %>%
-  ungroup()%>%
-  group_by(Station, Month, totalMeanMax, totalMeanMean, totalMeanMin, WY) %>%
-  summarize(annualMeanMax = mean(maxTemp),
-          annualMeanMean = mean(meanTemp),
-            annualMeanMin = mean(minTemp)) %>%
-  ungroup()
-
-
-summertemp = dailytemp %>%
-  filter(Year>1999) %>%
-  filter(Month %in% c(5, 6, 7, 8, 9)) %>%
-  group_by(Station, Month) %>%
-  mutate(fYear = factor(Year) ,
-         meanMax = mean(maxTemp),
-          meanMean = mean(meanTemp),
-            meanMin = mean(minTemp)) %>%
-  ungroup()
+  dplyr::group_by(Station, Month, fMonth) %>%
+  mutate(temp_max_q99 = quantile(temp_max, 0.99),
+         temp_max_q95 = quantile(temp_max, 0.95),
+         temp_max_q90 = quantile(temp_max, 0.90),
+         temp_mean_q99 = quantile(temp_mean, 0.99),
+         temp_mean_q95 = quantile(temp_mean, 0.95),
+         temp_mean_q90 = quantile(temp_mean, 0.90),
+         temp_min_q99 = quantile(temp_min, 0.99),
+         temp_min_q95 = quantile(temp_min, 0.95),
+         temp_min_q90 = quantile(temp_min, 0.90)) %>%
+  ungroup() %>%
+  dplyr::group_by(Station) %>%
+  mutate(temp_max_l1 = lag(temp_max, 1, order_by = date),
+         temp_max_l2 = lag(temp_max, 2, order_by = date),
+         heatwave_99=if_else(temp_max>temp_max_q99 & temp_max_l1>temp_max_q99 & temp_max_l2>temp_max_q99, 1L, 0L),
+         heatwave_95=if_else(temp_max>temp_max_q95 & temp_max_l1>temp_max_q95 & temp_max_l2>temp_max_q95, 1L, 0L),
+         heatwave_90=if_else(temp_max>temp_max_q90 & temp_max_l1>temp_max_q90 & temp_max_l2>temp_max_q90, 1L, 0L),
+         # min
+         temp_min_l1 = lag(temp_min, 1, order_by = date),
+         temp_min_l2 = lag(temp_min, 2, order_by = date),
+         heatwave_99=if_else(temp_min>temp_min_q99 & temp_min_l1>temp_min_q99 & temp_min_l2>temp_min_q99, 1L, 0L),
+         heatwave_95=if_else(temp_min>temp_min_q95 & temp_min_l1>temp_min_q95 & temp_min_l2>temp_min_q95, 1L, 0L),
+         heatwave_90=if_else(temp_min>temp_min_q90 & temp_min_l1>temp_min_q90 & temp_min_l2>temp_min_q90, 1L, 0L),
+         # mean
+         temp_mean_l1 = lag(temp_mean, 1, order_by = date),
+         temp_mean_l2 = lag(temp_mean, 2, order_by = date),
+         heatwave_99=if_else(temp_mean>temp_mean_q99 & temp_mean_l1>temp_mean_q99 & temp_mean_l2>temp_mean_q99, 1L, 0L),
+         heatwave_95=if_else(temp_mean>temp_mean_q95 & temp_mean_l1>temp_mean_q95 & temp_mean_l2>temp_mean_q95, 1L, 0L),
+         heatwave_90=if_else(temp_mean>temp_mean_q90 & temp_mean_l1>temp_mean_q90 & temp_mean_l2>temp_mean_q90, 1L, 0L))
 ```
 
-# Calculate percentiles
+## Calculate percentiles
 
-* Calculate monthly and seasonal percentiles by station or by Delta 
-* 3 days above percentiles 
+* Calculate heatwave frequency
 ```{r}
+heatwave_sum_max<-temp_quantiles%>%
+  group_by(Station, Month, fMonth)%>%
+  summarise(freq_99=sum(heatwave_99)/n(),
+            freq_95=sum(heatwave_95)/n(),
+            freq_90=sum(heatwave_90)/n(),
+            .groups="drop")%>%
+  pivot_longer(cols = c(freq_99, freq_95, freq_90), values_to="heatwave_freq", names_to="quantile", names_prefix="freq_")%>%
+  mutate(quantile=as.integer(quantile),
+         Month=month(Month, label=T),
+         fMonth = factor(Month))
 
+
+heatwave_sum_max_month_year<-temp_quantiles%>%
+  group_by(Station, Year, Month, fMonth)%>%
+  summarise(freq_99=sum(heatwave_99)/n(),
+            freq_95=sum(heatwave_95)/n(),
+            freq_90=sum(heatwave_90)/n(),
+            .groups="drop")%>%
+  pivot_longer(cols = c(freq_99, freq_95, freq_90), values_to="heatwave_freq", names_to="quantile", names_prefix="freq_")%>%
+  mutate(quantile=as.integer(quantile),
+         Month=month(Month, label=T),
+         fMonth = factor(Month))
+
+heatwave_sum_max_year<-temp_quantiles%>%
+  group_by(Station, Year)%>%
+  summarise(freq_99=sum(heatwave_99)/n(),
+            freq_95=sum(heatwave_95)/n(),
+            freq_90=sum(heatwave_90)/n(),
+            .groups="drop")%>%
+  pivot_longer(cols = c(freq_99, freq_95, freq_90), values_to="heatwave_freq", names_to="quantile", names_prefix="freq_")%>%
+  mutate(quantile=as.integer(quantile))
 ```
 
+## Plots
 
-# Plots
+* Organize station west to east with color gradient
+* Include a map of air and water temp overlaid
+* Double check my year code for percentages
+
+
+### Plot quantile values
+```{r, fig.height = 6, fig.width = 8}
+temp_quantile_values = dailytemp %>%
+  filter(Year>2001) %>%
+  #filter(Month %in% c(5, 6, 7, 8, 9, 10)) %>%
+  dplyr::group_by(Station, Month) %>%
+  summarise(temp_max_q99 = quantile(temp_max, 0.99),
+         temp_max_q95 = quantile(temp_max, 0.95),
+         temp_max_q90 = quantile(temp_max, 0.90)) %>%
+  pivot_longer(cols = c(temp_max_q99, temp_max_q95, temp_max_q90), values_to = "temp", names_to = "quantile", names_prefix = "temp_max_") %>%
+  mutate(fMonth = factor(Month))
+
+ggplot(temp_quantile_values) + 
+  geom_point(aes(x = fMonth, y = temp, color = quantile)) +
+  facet_wrap(~Station) + 
+  viridis::scale_color_viridis(option = "turbo", discrete = TRUE) + 
+  theme_bw() 
+```
+
+### Plot temperature values with quantiles
+```{r, fig.height=8, fig.width=10}
+# with quantile values
+ggplot() + 
+  geom_jitter(data = temp_quantiles, aes(x = fMonth, y = temp_max), color = "gray80", shape = 2, size = 0.5) +
+  #geom_line(data = temp_quantile_values, aes(x = fMonth, y = temp, color = quantile))+
+  geom_point(data = temp_quantile_values, aes(x = fMonth, y = temp, color = quantile), size = 2) +
+  facet_grid(Year~Station) + 
+  viridis::scale_color_viridis(option = "turbo", discrete = TRUE) + 
+  theme_bw() +
+  theme(legend.position = "top")
+
+
+ggplot(temp_quantiles, aes(x=yday(date), y=temp_max))+
+  geom_point()+
+  facet_grid(Year~Station)+
+  theme_bw()
+```
+
+### Plot temps with shaded periods of heat waves
+```{r, fig.height=8, fig.width=10}
+ggplot(temp_quantiles, aes(x=date, y=temp_max))+
+  geom_point()+
+  geom_vline(data=filter(temp_quantiles, heatwave_90==1L), aes(xintercept=date), color="chartreuse3")+
+  geom_vline(data=filter(temp_quantiles, heatwave_95==1L), aes(xintercept=date), color="darkorchid4")+
+  geom_vline(data=filter(temp_quantiles, heatwave_99==1L), aes(xintercept=date), color="red")+
+  facet_grid(Station~Month)+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+### Plot heat wave frequency by month
+```{r, fig.height=6, fig.width=10}
+ggplot(heatwave_sum_max, aes(x=Month, y=heatwave_freq, fill=Station))+
+  geom_bar(position=position_dodge(), stat = "identity")+
+  facet_wrap(~quantile)+
+  scale_y_continuous(expand=expansion(0,0))+
+  scale_fill_viridis_d()+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+### Plot heat wave frequency by year
+```{r, fig.height = 6, fig.width = 10}
+ggplot(heatwave_sum_max_year, aes(x=factor(Year), y=heatwave_freq, fill=Station))+
+  geom_bar(position=position_dodge(), stat = "identity")+
+  facet_wrap(~quantile)+
+  scale_y_continuous(expand=expansion(0,0))+
+  scale_fill_viridis_d()+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+### Plot heat wave frequency by year, month, station, and quantile type
+```{r, fig.height = 8, fig.width = 10}
+ggplot(heatwave_sum_max_month_year, aes(x=factor(Year), y=heatwave_freq, fill=Station))+
+  geom_bar(position=position_dodge(), stat = "identity")+
+  facet_grid(fMonth~quantile)+
+  scale_y_continuous(expand=expansion(0,0))+
+  scale_fill_viridis_d()+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+### Plot heat wave frequency by space
 ```{r}
-(ggplot(summertemp) + geom_boxplot(aes(fYear, meanTemp)) + facet_wrap(~Month) +
-   theme_bw() + theme(axis.text.x = element_text(angle = 90)))
-(ggplot(summertemp) + geom_boxplot(aes(fYear, maxTemp))+ facet_wrap(~Month)+ theme_bw() + theme(axis.text.x = element_text(angle = 90)))
-(ggplot(summertemp) + geom_boxplot(aes(fYear, minTemp))+ facet_wrap(~Month)+ theme_bw() + theme(axis.text.x = element_text(angle = 90)))
+heatwaves_sf <- right_join(sta_locations_sf, heatwave_sum_max_year ) %>%
+  filter(quantile == "95", fMonth == "Jul")
+
+ggplot() + 
+  geom_sf(data = heatwaves_sf, aes(color = heatwave_freq)) +
+  facet_wrap(~Year)+
+  theme(axis.text.x=element_text(angle=45, hjust=1))
 ```
 

@@ -38,19 +38,18 @@ zips<-bind_rows(
 
 Load temperature data
 ```{r}
-temp_max_raw<-read_csv("data_clean/CAzip_tmmx_99to20.csv", 
+temp_max_raw<-read_csv("data_clean/gridmet_temperature_CAzip_99to22.csv", 
                    col_types=cols_only(zip="c", date="D",
-                               lat="d", lon="d", tmmx_C="d"))%>%
+                               lat="d", lon="d", tmmx_C="d"))
+
+temp_max<-temp_max_raw%>%
   filter(zip%in%zips$zipcode)%>%
   left_join(zips, by=c("zip"="zipcode"))%>%
   group_by(date, major_city)%>%
   summarise(temp_max=max(tmmx_C), .groups="drop")%>%
   mutate(major_city=factor(major_city, levels=c("Pittsburg", "Isleton", "West Sacramento", "Sacramento", "Stockton")),
          Month=month(date),
-         Year=year(date))
-
-temp_max<-temp_max_raw%>%
-  filter(!(Month==12 & mday(date)==31))%>% # For some reason, many temps on Dec 31 are very high, so removing all of them
+         Year=year(date))%>%
   group_by(Month, major_city)%>%
   mutate(temp_max_q99=quantile(temp_max, 0.99),
          temp_max_q95=quantile(temp_max, 0.95),
@@ -102,17 +101,6 @@ cutoffs<-temp_max%>%
 # Plots 
 
 ## Temperature data
-
-### Plot all temperatures
-
-```{r, fig.height=12, fig.width=10}
-ggplot(temp_max_raw, aes(x=yday(date), y=temp_max))+
-  geom_point()+
-  facet_grid(Year~major_city)+
-  theme_bw()
-```
-
-### Plot temperatures without Dec 31
 
 ```{r, fig.height=12, fig.width=10}
 ggplot(temp_max, aes(x=yday(date), y=temp_max))+

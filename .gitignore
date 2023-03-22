@@ -43,3 +43,4 @@ data_raw/tempToUse_20210811.rds
 data_clean/CAzip_tmmn_99to20.csv
 data_clean/CAzip_tmmx_99to20.csv
 data_clean/gridmet_temperature_CAzip_99to22.csv
+data_clean/gridmet_humidity_CAzip_99to22.csv

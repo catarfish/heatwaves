@@ -36,35 +36,57 @@ zips<-bind_rows(
   select(zipcode, major_city)
 ```
 
+Load humidity data
+```{r}
+hum_raw<-read_csv("data_clean/gridmet_humidity_CAzip_99to22.csv", 
+                  col_types=cols_only(zip="c", date="D",
+                                      lat="d", lon="d", rmax="d", 
+                                      rmin="d", sph="d"))
+
+hum<-hum_raw%>%
+  filter(zip%in%zips$zipcode)%>%
+  left_join(zips, by=c("zip"="zipcode"))%>%
+  mutate(rh=(rmax+rmin)/2)%>% # Calculate rh with midpoint of min and max
+  group_by(date, major_city)%>%
+  summarise(rh=mean(rh), .groups="drop")
+
+```
+
+
 Load temperature data
 ```{r}
 temp_max_raw<-read_csv("data_clean/gridmet_temperature_CAzip_99to22.csv", 
-                   col_types=cols_only(zip="c", date="D",
-                               lat="d", lon="d", tmmx_C="d"))
+                       col_types=cols_only(zip="c", date="D",
+                                           lat="d", lon="d", tmmx_C="d"))
 
-temp_max<-temp_max_raw%>%
+temp_appt<-temp_max_raw%>%
   filter(zip%in%zips$zipcode)%>%
   left_join(zips, by=c("zip"="zipcode"))%>%
   group_by(date, major_city)%>%
   summarise(temp_max=max(tmmx_C), .groups="drop")%>%
-  mutate(major_city=factor(major_city, levels=c("Pittsburg", "Isleton", "West Sacramento", "Sacramento", "Stockton")),
+  left_join(hum, temp_max, by=c("date", "major_city"))%>%
+  mutate(satvap=6.112*10^(7.5*temp_max/(237.7+temp_max)),
+         actvap=(rh*satvap)/100,
+         dewpt=(-430.22+237.7*log(actvap))/(-log(actvap)+19.08),
+         temp_appt=-2.653+(0.994*temp_max)+0.0153*(dewpt*dewpt),
+         major_city=factor(major_city, levels=c("Pittsburg", "Isleton", "West Sacramento", "Sacramento", "Stockton")),
          Month=month(date),
          Year=year(date))%>%
   group_by(Month, major_city)%>%
-  mutate(temp_max_q99=quantile(temp_max, 0.99),
-         temp_max_q95=quantile(temp_max, 0.95),
-         temp_max_q90=quantile(temp_max, 0.90))%>%
+  mutate(temp_appt_q99=quantile(temp_appt, 0.99),
+         temp_appt_q95=quantile(temp_appt, 0.95),
+         temp_appt_q90=quantile(temp_appt, 0.90))%>%
   ungroup()%>%
   group_by(major_city)%>%
-  mutate(temp_max_l1=lag(temp_max, 1, order_by=date),
-         temp_max_l2=lag(temp_max, 2, order_by=date),
-         heatwave_99=if_else(temp_max>temp_max_q99 & temp_max_l1>temp_max_q99 & temp_max_l2>temp_max_q99, TRUE, FALSE),
-         heatwave_95=if_else(temp_max>temp_max_q95 & temp_max_l1>temp_max_q95 & temp_max_l2>temp_max_q95, TRUE, FALSE),
-         heatwave_90=if_else(temp_max>temp_max_q90 & temp_max_l1>temp_max_q90 & temp_max_l2>temp_max_q90, TRUE, FALSE))%>%
+  mutate(temp_appt_l1=lag(temp_appt, 1, order_by=date),
+         temp_appt_l2=lag(temp_appt, 2, order_by=date),
+         heatwave_99=if_else(temp_appt>temp_appt_q99 & temp_appt_l1>temp_appt_q99 & temp_appt_l2>temp_appt_q99, TRUE, FALSE),
+         heatwave_95=if_else(temp_appt>temp_appt_q95 & temp_appt_l1>temp_appt_q95 & temp_appt_l2>temp_appt_q95, TRUE, FALSE),
+         heatwave_90=if_else(temp_appt>temp_appt_q90 & temp_appt_l1>temp_appt_q90 & temp_appt_l2>temp_appt_q90, TRUE, FALSE))%>%
   ungroup()%>%
   mutate(Month=month(Month, label=T))
 
-heatwave_sum_month<-temp_max%>%
+heatwave_sum_month<-temp_appt%>%
   group_by(major_city, Month)%>%
   summarise(freq_99=sum(heatwave_99)/n(),
             freq_95=sum(heatwave_95)/n(),
@@ -73,7 +95,7 @@ heatwave_sum_month<-temp_max%>%
   pivot_longer(cols = c(freq_99, freq_95, freq_90), values_to="heatwave_freq", names_to="quantile", names_prefix="freq_")%>%
   mutate(quantile=as.integer(quantile))
 
-heatwave_sum_year<-temp_max%>%
+heatwave_sum_year<-temp_appt%>%
   group_by(major_city, Year)%>%
   summarise(freq_99=sum(heatwave_99)/n(),
             freq_95=sum(heatwave_95)/n(),
@@ -82,7 +104,7 @@ heatwave_sum_year<-temp_max%>%
   pivot_longer(cols = c(freq_99, freq_95, freq_90), values_to="heatwave_freq", names_to="quantile", names_prefix="freq_")%>%
   mutate(quantile=as.integer(quantile))
 
-heatwave_sum_year_month<-temp_max%>%
+heatwave_sum_year_month<-temp_appt%>%
   group_by(major_city, Year, Month)%>%
   summarise(freq_99=sum(heatwave_99)/n(),
             freq_95=sum(heatwave_95)/n(),
@@ -91,11 +113,11 @@ heatwave_sum_year_month<-temp_max%>%
   pivot_longer(cols = c(freq_99, freq_95, freq_90), values_to="heatwave_freq", names_to="quantile", names_prefix="freq_")%>%
   mutate(quantile=as.integer(quantile))
 
-cutoffs<-temp_max%>%
-  distinct(major_city, Month, temp_max_q99, temp_max_q95, temp_max_q90)%>%
-  pivot_longer(cols = c(temp_max_q99, temp_max_q95, temp_max_q90), values_to="cutoff", names_to="quantile", names_prefix="temp_max_q")%>%
+cutoffs<-temp_appt%>%
+  distinct(major_city, Month, temp_appt_q99, temp_appt_q95, temp_appt_q90)%>%
+  pivot_longer(cols = c(temp_appt_q99, temp_appt_q95, temp_appt_q90), values_to="cutoff", names_to="quantile", names_prefix="temp_appt_q")%>%
   mutate(quantile=as.integer(quantile))
-  
+
 ```
 
 # Plots 
@@ -103,7 +125,7 @@ cutoffs<-temp_max%>%
 ## Temperature data
 
 ```{r, fig.height=12, fig.width=10}
-ggplot(temp_max, aes(x=yday(date), y=temp_max))+
+ggplot(temp_appt, aes(x=yday(date), y=temp_appt))+
   geom_point()+
   facet_grid(Year~major_city)+
   theme_bw()
@@ -127,17 +149,17 @@ ggplot(cutoffs, aes(x=Month, y=cutoff, color=quantile))+
 
 ```{r}
 datatable(mutate(cutoffs, cutoff=round(cutoff, 1)), rownames = FALSE, 
-           options = list(lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))))
+          options = list(lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))))
 ```
 
 ### Plot temps with heat waves
 
 ```{r, fig.height=12, fig.width=10}
-ggplot(temp_max, aes(x=date, y=temp_max))+
+ggplot(temp_appt, aes(x=date, y=temp_appt))+
   geom_point()+
-  geom_vline(data=filter(temp_max, heatwave_90), aes(xintercept=date), color="chartreuse3")+
-  geom_vline(data=filter(temp_max, heatwave_95), aes(xintercept=date), color="darkorchid4")+
-  geom_vline(data=filter(temp_max, heatwave_99), aes(xintercept=date), color="red")+
+  geom_vline(data=filter(temp_appt, heatwave_90), aes(xintercept=date), color="chartreuse3")+
+  geom_vline(data=filter(temp_appt, heatwave_95), aes(xintercept=date), color="darkorchid4")+
+  geom_vline(data=filter(temp_appt, heatwave_99), aes(xintercept=date), color="red")+
   facet_grid(Month~major_city)+
   theme_bw()+
   theme(axis.text.x=element_text(angle=45, hjust=1))

@@ -21,6 +21,7 @@ library(lubridate)
 library(ggplot2)
 library(zipcodeR)
 library(DT)
+library(patchwork)
 ```
 
 # Load data
@@ -80,11 +81,33 @@ temp_appt<-temp_max_raw%>%
   group_by(major_city)%>%
   mutate(temp_appt_l1=lag(temp_appt, 1, order_by=date),
          temp_appt_l2=lag(temp_appt, 2, order_by=date),
-         heatwave_99=if_else(temp_appt>temp_appt_q99 & temp_appt_l1>temp_appt_q99 & temp_appt_l2>temp_appt_q99, TRUE, FALSE),
-         heatwave_95=if_else(temp_appt>temp_appt_q95 & temp_appt_l1>temp_appt_q95 & temp_appt_l2>temp_appt_q95, TRUE, FALSE),
-         heatwave_90=if_else(temp_appt>temp_appt_q90 & temp_appt_l1>temp_appt_q90 & temp_appt_l2>temp_appt_q90, TRUE, FALSE))%>%
+         temp_appt_ln1=lead(temp_appt, 1, order_by=date),
+         temp_appt_ln2=lead(temp_appt, 2, order_by=date),
+         heatwave_99=if_else((temp_appt>temp_appt_q99 & temp_appt_l1>temp_appt_q99 & temp_appt_l2>temp_appt_q99) |
+                               (temp_appt>temp_appt_q99 & temp_appt_ln1>temp_appt_q99 & temp_appt_ln2>temp_appt_q99), 
+                             TRUE, FALSE),
+         heatwave_95=if_else((temp_appt>temp_appt_q95 & temp_appt_l1>temp_appt_q95 & temp_appt_l2>temp_appt_q95) |
+                               (temp_appt>temp_appt_q95 & temp_appt_ln1>temp_appt_q95 & temp_appt_ln2>temp_appt_q95), 
+                             TRUE, FALSE),
+         heatwave_90=if_else((temp_appt>temp_appt_q90 & temp_appt_l1>temp_appt_q90 & temp_appt_l2>temp_appt_q90) |
+                               (temp_appt>temp_appt_q90 & temp_appt_ln1>temp_appt_q90 & temp_appt_ln2>temp_appt_q90), 
+                             TRUE, FALSE))%>%
   ungroup()%>%
-  mutate(Month=month(Month, label=T))
+  mutate(Month=month(Month, label=T))%>%
+  arrange(major_city, date)
+
+# identifying contiguous 95% heatwave days to estimate duration
+heatwave_dur<-temp_appt%>%
+  group_by(major_city, heatwave_95)%>%
+  mutate(Lag=date-lag(date, order_by = date))%>%
+  ungroup()%>%
+  mutate(Start=if_else(is.na(Lag) | Lag>1, TRUE, FALSE),
+         Series_ID=1:n(),
+         Series_ID=if_else(Start, Series_ID, NA_integer_),
+         Series_ID=as.integer(as.factor(Series_ID)))%>%
+  fill(Series_ID, .direction="down")%>%
+  group_by(major_city, Month, Year, Series_ID)%>%
+  summarise(duration95=length(which(heatwave_95)), .groups="drop")
 
 heatwave_sum_month<-temp_appt%>%
   group_by(major_city, Month)%>%
@@ -122,7 +145,43 @@ cutoffs<-temp_appt%>%
 
 # Plots 
 
-## Temperature data
+Raw temperature vs apparent temperature
+```{r}
+ggplot(temp_appt, aes(x=temp_max, y=temp_appt))+
+  geom_point(alpha=0.1)+
+  geom_abline(slope=1, intercept=0, color="red", linetype=2)+
+  facet_wrap(~Month)+
+  theme_bw()
+```
+
+humidity by month
+```{r}
+ggplot(temp_appt, aes(x=Month, y=rh))+
+  geom_boxplot()+
+  facet_wrap(~major_city)+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+dew point by month
+```{r}
+ggplot(temp_appt, aes(x=Month, y=dewpt))+
+  geom_boxplot()+
+  facet_wrap(~major_city)+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+actvap point by month
+```{r}
+ggplot(temp_appt, aes(x=Month, y=actvap))+
+  geom_boxplot()+
+  facet_wrap(~major_city)+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+## Apparent temperature data
 
 ```{r, fig.height=12, fig.width=10}
 ggplot(temp_appt, aes(x=yday(date), y=temp_appt))+
@@ -133,14 +192,14 @@ ggplot(temp_appt, aes(x=yday(date), y=temp_appt))+
 
 ## Heatwaves
 
-### Plot temperature cutoffs
+### Plot apparent temperature cutoffs
 
 ```{r}
 ggplot(cutoffs, aes(x=Month, y=cutoff, color=quantile))+
   geom_point()+
   facet_wrap(~major_city)+
   scale_color_viridis_c(breaks=c(90, 95, 99))+
-  ylab("Temperature cutoff (°C)")+
+  ylab("Apparent temperature cutoff (°C)")+
   theme_bw()+
   theme(axis.text.x=element_text(angle=45, hjust=1))
 ```
@@ -203,3 +262,55 @@ ggplot(heatwave_sum_year_month, aes(x=Year, y=heatwave_freq, fill=major_city))+
   theme_bw()+
   theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom")
 ```
+
+### Heatwave duration
+
+```{r}
+ggplot(filter(heatwave_dur, duration95>0), aes(x=Year, y=duration95, color=major_city, group=interaction(Year, major_city)))+
+  geom_boxplot()+
+  scale_color_viridis_d(name="City")+
+  theme_bw()
+```
+
+### Final plots
+
+Temp cutoffs
+
+```{r}
+p<-ggplot(filter(cutoffs, quantile==95), aes(x=Month, y=cutoff, color=major_city))+
+  geom_point(position=position_dodge(width=0.4), alpha=0.8)+
+  scale_color_viridis_d(name="")+
+  ylab("Apparent temperature cutoff (°C)")+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom", plot.margin = margin(5, 40, 5, 5))
+p
+
+ggsave(plot=p, file="figs/air apparent temperature cutoffs.png", height=5, width=5)
+```
+
+
+Results
+```{r, fig.height=9, fig.width=10}
+p_y<-ggplot(filter(heatwave_sum_month, quantile==95), aes(x=Month, y=heatwave_freq, fill=major_city))+
+  geom_bar(position=position_dodge(), stat = "identity")+
+  scale_y_continuous(expand=expansion(0,0))+
+  scale_fill_viridis_d(name="")+
+  ylab("Heatwave frequency")+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom")
+
+p_m<-ggplot(filter(heatwave_sum_year, quantile==95), aes(x=Year, y=heatwave_freq, fill=major_city))+
+  geom_bar(position=position_dodge(), stat = "identity")+
+  scale_y_continuous(expand=expansion(0,0))+
+  scale_fill_viridis_d(name="")+
+  ylab("Heatwave frequency")+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom")
+
+p<-p_m/p_y+plot_layout(guides="collect") &
+  theme(legend.position='bottom')
+p
+
+ggsave(plot=p, file="figs/air heatwave results.png", height=6, width=10)
+```
+

@@ -91,7 +91,8 @@ temp_appt<-temp_max_raw%>%
                              TRUE, FALSE),
          heatwave_90=if_else((temp_appt>temp_appt_q90 & temp_appt_l1>temp_appt_q90 & temp_appt_l2>temp_appt_q90) |
                                (temp_appt>temp_appt_q90 & temp_appt_ln1>temp_appt_q90 & temp_appt_ln2>temp_appt_q90), 
-                             TRUE, FALSE))%>%
+                             TRUE, FALSE),
+         heatwave_95_intensity=if_else(heatwave_95, temp_appt/temp_appt_q95, NA))%>%
   ungroup()%>%
   mutate(Month=month(Month, label=T))%>%
   arrange(major_city, date)
@@ -266,9 +267,29 @@ ggplot(heatwave_sum_year_month, aes(x=Year, y=heatwave_freq, fill=major_city))+
 ### Heatwave duration
 
 ```{r}
-ggplot(filter(heatwave_dur, duration95>0), aes(x=Year, y=duration95, color=major_city, group=interaction(Year, major_city)))+
+ggplot(filter(heatwave_dur, duration95>0), aes(x=Year, y=duration95, fill=major_city, group=interaction(Year, major_city)))+
+  geom_jitter()+
+  scale_fill_viridis_d(name="City")+
+  theme_bw()
+```
+
+### Heatwave intensity
+
+By Month
+```{r}
+ggplot(filter(temp_appt, heatwave_95), 
+       aes(x=Month, y=heatwave_95_intensity, fill=major_city, group=interaction(Month, major_city)))+
   geom_boxplot()+
-  scale_color_viridis_d(name="City")+
+  scale_fill_viridis_d(name="City")+
+  theme_bw()
+```
+
+By Year
+```{r}
+ggplot(filter(temp_appt, heatwave_95), 
+       aes(x=Year, y=heatwave_95_intensity, fill=major_city, group=interaction(Year, major_city)))+
+  geom_boxplot()+
+  scale_fill_viridis_d(name="City")+
   theme_bw()
 ```
 

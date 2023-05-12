@@ -83,14 +83,17 @@ temp_appt<-temp_max_raw%>%
          temp_appt_l2=lag(temp_appt, 2, order_by=date),
          temp_appt_ln1=lead(temp_appt, 1, order_by=date),
          temp_appt_ln2=lead(temp_appt, 2, order_by=date),
-         heatwave_99=if_else((temp_appt>temp_appt_q99 & temp_appt_l1>temp_appt_q99 & temp_appt_l2>temp_appt_q99) |
-                               (temp_appt>temp_appt_q99 & temp_appt_ln1>temp_appt_q99 & temp_appt_ln2>temp_appt_q99), 
+         heatwave_99=if_else((temp_appt>temp_appt_q99 & temp_appt_l1>temp_appt_q99 & temp_appt_l2>temp_appt_q99) | # Current day and prior 2 days above cutoff
+                               (temp_appt>temp_appt_q99 & temp_appt_ln1>temp_appt_q99 & temp_appt_ln2>temp_appt_q99) | # Current day and next 2 days above cutoff
+                               (temp_appt>temp_appt_q99 & temp_appt_ln1>temp_appt_q99 & temp_appt_l1>temp_appt_q99),  # current day and day before and after are above cutoff
                              TRUE, FALSE),
          heatwave_95=if_else((temp_appt>temp_appt_q95 & temp_appt_l1>temp_appt_q95 & temp_appt_l2>temp_appt_q95) |
-                               (temp_appt>temp_appt_q95 & temp_appt_ln1>temp_appt_q95 & temp_appt_ln2>temp_appt_q95), 
+                               (temp_appt>temp_appt_q95 & temp_appt_ln1>temp_appt_q95 & temp_appt_ln2>temp_appt_q95) |
+                               (temp_appt>temp_appt_q95 & temp_appt_ln1>temp_appt_q95 & temp_appt_l1>temp_appt_q95), 
                              TRUE, FALSE),
          heatwave_90=if_else((temp_appt>temp_appt_q90 & temp_appt_l1>temp_appt_q90 & temp_appt_l2>temp_appt_q90) |
-                               (temp_appt>temp_appt_q90 & temp_appt_ln1>temp_appt_q90 & temp_appt_ln2>temp_appt_q90), 
+                               (temp_appt>temp_appt_q90 & temp_appt_ln1>temp_appt_q90 & temp_appt_ln2>temp_appt_q90) |
+                               (temp_appt>temp_appt_q90 & temp_appt_ln1>temp_appt_q90 & temp_appt_l1>temp_appt_q90), 
                              TRUE, FALSE),
          heatwave_95_intensity=if_else(heatwave_95, temp_appt/temp_appt_q95, NA))%>%
   ungroup()%>%
@@ -99,16 +102,31 @@ temp_appt<-temp_max_raw%>%
 
 # identifying contiguous 95% heatwave days to estimate duration
 heatwave_dur<-temp_appt%>%
-  group_by(major_city, heatwave_95)%>%
+  filter(heatwave_95)%>%
+  group_by(major_city)%>%
   mutate(Lag=date-lag(date, order_by = date))%>%
   ungroup()%>%
   mutate(Start=if_else(is.na(Lag) | Lag>1, TRUE, FALSE),
-         Series_ID=1:n(),
-         Series_ID=if_else(Start, Series_ID, NA_integer_),
-         Series_ID=as.integer(as.factor(Series_ID)))%>%
-  fill(Series_ID, .direction="down")%>%
-  group_by(major_city, Month, Year, Series_ID)%>%
-  summarise(duration95=length(which(heatwave_95)), .groups="drop")
+         Heatwave_id=1:n(),
+         Heatwave_id=if_else(Start, Heatwave_id, NA_integer_),
+         Heatwave_id=as.integer(as.factor(Heatwave_id)))%>%
+  fill(Heatwave_id, .direction="down")%>%
+  group_by(major_city, Heatwave_id)%>%
+  summarise(duration_95=n(),
+            Date=min(date),
+            temp_appt_mean=mean(temp_appt),
+            intensity_mean=mean(heatwave_95_intensity),
+            .groups="drop")%>%
+  mutate(Month=month(Date, label=T),
+         Year=year(Date),
+         duration_95=if_else(duration_95<3, 3, duration_95))
+
+heatwave_dur_year<-heatwave_dur%>%
+  group_by(Year, major_city)%>%
+  summarise(duration_95_mean=mean(duration_95),
+            duration_95_sd=sd(duration_95),
+            .groups="drop")%>%
+  mutate(duration_95_sd=if_else(is.na(duration_95_sd), 0, duration_95_sd))
 
 heatwave_sum_month<-temp_appt%>%
   group_by(major_city, Month)%>%
@@ -143,6 +161,14 @@ cutoffs<-temp_appt%>%
   mutate(quantile=as.integer(quantile))
 
 ```
+
+# Heatwave data
+
+```{r}
+datatable(mutate(heatwave_dur, across(c(temp_appt_mean, intensity_mean), ~round(.x, 2))), rownames = FALSE, 
+          options = list(lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))))
+```
+
 
 # Plots 
 
@@ -267,12 +293,25 @@ ggplot(heatwave_sum_year_month, aes(x=Year, y=heatwave_freq, fill=major_city))+
 ### Heatwave duration
 
 ```{r}
-ggplot(filter(heatwave_dur, duration95>0), aes(x=Year, y=duration95, fill=major_city, group=interaction(Year, major_city)))+
-  geom_jitter()+
-  scale_fill_viridis_d(name="City")+
+ggplot(heatwave_dur, aes(x=Year, y=duration_95, color=major_city, group=interaction(Year, major_city)))+
+  geom_jitter(height=0, alpha=0.3)+
+  scale_color_viridis_d(name="City")+
+  facet_wrap(~major_city)+
+  ylab("Heatwave duration (days)")+
   theme_bw()
 ```
 
+Aggregated by year
+```{r}
+ggplot(heatwave_dur_year, aes(x=Year, y=duration_95_mean, ymin=duration_95_mean-duration_95_sd, 
+                              ymax=duration_95_mean+duration_95_sd, color=major_city, 
+                              group=interaction(Year, major_city)))+
+  geom_pointrange()+
+  scale_color_viridis_d(name="City")+
+  facet_wrap(~major_city)+
+  ylab("Heatwave duration (days)")+
+  theme_bw()
+```
 ### Heatwave intensity
 
 By Month
@@ -332,6 +371,6 @@ p<-p_m/p_y+plot_layout(guides="collect") &
   theme(legend.position='bottom')
 p
 
-ggsave(plot=p, file="figs/air heatwave results.png", height=6, width=10)
+ggsave(plot=p, file="figs/air heatwave frequency.png", height=6, width=10)
 ```
 

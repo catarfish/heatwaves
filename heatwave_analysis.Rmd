@@ -21,6 +21,8 @@ library(ggplot2)
 library(sf)
 library(mapview)
 library(DT)
+library(patchwork)
+library(viridis)
 ```
 
 ## Read data - filter to stations of interest
@@ -52,7 +54,8 @@ dailytemp <- tempdata %>%
             temp_mean = mean(Temp),
             temp_max = max(Temp)) %>%
   mutate(Month = month(date),
-         fMonth = factor(Month),
+         fMonth = month(date, label = TRUE),
+         fMonth = factor(fMonth),
          Year = year(date),
          WY = ifelse(Month > 9, Year + 1, Year),
          Season = case_when(Month %in% c(10, 11, 12) ~ "Fall",
@@ -84,32 +87,37 @@ temp_quantiles = dailytemp %>%
   dplyr::group_by(Station, Month, fMonth) %>%
   mutate(temp_max_q99 = quantile(temp_max, 0.99),
          temp_max_q95 = quantile(temp_max, 0.95),
-         temp_max_q90 = quantile(temp_max, 0.90),
-         temp_mean_q99 = quantile(temp_mean, 0.99),
-         temp_mean_q95 = quantile(temp_mean, 0.95),
-         temp_mean_q90 = quantile(temp_mean, 0.90),
-         temp_min_q99 = quantile(temp_min, 0.99),
-         temp_min_q95 = quantile(temp_min, 0.95),
-         temp_min_q90 = quantile(temp_min, 0.90)) %>%
+         temp_max_q90 = quantile(temp_max, 0.90))%>%
+         # temp_mean_q99 = quantile(temp_mean, 0.99),
+         # temp_mean_q95 = quantile(temp_mean, 0.95),
+         # temp_mean_q90 = quantile(temp_mean, 0.90),
+         # temp_min_q99 = quantile(temp_min, 0.99),
+         # temp_min_q95 = quantile(temp_min, 0.95),
+         # temp_min_q90 = quantile(temp_min, 0.90)) 
   ungroup() %>%
   dplyr::group_by(Station) %>%
   mutate(temp_max_l1 = lag(temp_max, 1, order_by = date),
          temp_max_l2 = lag(temp_max, 2, order_by = date),
-         heatwave_99=if_else(temp_max>temp_max_q99 & temp_max_l1>temp_max_q99 & temp_max_l2>temp_max_q99, 1L, 0L),
-         heatwave_95=if_else(temp_max>temp_max_q95 & temp_max_l1>temp_max_q95 & temp_max_l2>temp_max_q95, 1L, 0L),
-         heatwave_90=if_else(temp_max>temp_max_q90 & temp_max_l1>temp_max_q90 & temp_max_l2>temp_max_q90, 1L, 0L),
-         # min
-         temp_min_l1 = lag(temp_min, 1, order_by = date),
-         temp_min_l2 = lag(temp_min, 2, order_by = date),
-         heatwave_99=if_else(temp_min>temp_min_q99 & temp_min_l1>temp_min_q99 & temp_min_l2>temp_min_q99, 1L, 0L),
-         heatwave_95=if_else(temp_min>temp_min_q95 & temp_min_l1>temp_min_q95 & temp_min_l2>temp_min_q95, 1L, 0L),
-         heatwave_90=if_else(temp_min>temp_min_q90 & temp_min_l1>temp_min_q90 & temp_min_l2>temp_min_q90, 1L, 0L),
-         # mean
-         temp_mean_l1 = lag(temp_mean, 1, order_by = date),
-         temp_mean_l2 = lag(temp_mean, 2, order_by = date),
-         heatwave_99=if_else(temp_mean>temp_mean_q99 & temp_mean_l1>temp_mean_q99 & temp_mean_l2>temp_mean_q99, 1L, 0L),
-         heatwave_95=if_else(temp_mean>temp_mean_q95 & temp_mean_l1>temp_mean_q95 & temp_mean_l2>temp_mean_q95, 1L, 0L),
-         heatwave_90=if_else(temp_mean>temp_mean_q90 & temp_mean_l1>temp_mean_q90 & temp_mean_l2>temp_mean_q90, 1L, 0L)) 
+         temp_max_ln1 = lead(temp_max, 1, order_by = date),
+         temp_max_ln2 = lead(temp_max, 2, order_by = date),
+         heatwave_99=if_else((temp_max>temp_max_q99 & temp_max_l1>temp_max_q99 & temp_max_l2>temp_max_q99) | (temp_max>temp_max_q99 & temp_max_ln1>temp_max_q99 & temp_max_ln2>temp_max_q99), 1L, 0L),
+         heatwave_95=if_else((temp_max>temp_max_q95 & temp_max_l1>temp_max_q95 & temp_max_l2>temp_max_q95) | (temp_max>temp_max_q95 & temp_max_ln1>temp_max_q95 & temp_max_ln2>temp_max_q95), 1L, 0L),
+         heatwave_90=if_else((temp_max>temp_max_q90 & temp_max_l1>temp_max_q90 & temp_max_l2>temp_max_q90) | (temp_max>temp_max_q90 & temp_max_ln1>temp_max_q90 & temp_max_ln2>temp_max_q90), 1L, 0L),
+         # # min
+         # temp_min_l1 = lag(temp_min, 1, order_by = date),
+         # temp_min_l2 = lag(temp_min, 2, order_by = date),
+         # heatwave_99=if_else(temp_min>temp_min_q99 & temp_min_l1>temp_min_q99 & temp_min_l2>temp_min_q99, 1L, 0L),
+         # heatwave_95=if_else(temp_min>temp_min_q95 & temp_min_l1>temp_min_q95 & temp_min_l2>temp_min_q95, 1L, 0L),
+         # heatwave_90=if_else(temp_min>temp_min_q90 & temp_min_l1>temp_min_q90 & temp_min_l2>temp_min_q90, 1L, 0L),
+         # # mean
+         # temp_mean_l1 = lag(temp_mean, 1, order_by = date),
+         # temp_mean_l2 = lag(temp_mean, 2, order_by = date),
+         # heatwave_99=if_else(temp_mean>temp_mean_q99 & temp_mean_l1>temp_mean_q99 & temp_mean_l2>temp_mean_q99, 1L, 0L),
+         # heatwave_95=if_else(temp_mean>temp_mean_q95 & temp_mean_l1>temp_mean_q95 & temp_mean_l2>temp_mean_q95, 1L, 0L),
+         # heatwave_90=if_else(temp_mean>temp_mean_q90 & temp_mean_l1>temp_mean_q90 & temp_mean_l2>temp_mean_q90, 1L, 0L),
+        heatwave_95_intensity=if_else(heatwave_95==1L, temp_max/temp_max_q95, NA)) %>%
+  ungroup()%>%
+  arrange(Station,date)
 
 temp_quantiles$Station <- factor(temp_quantiles$Station, levels = station_order)
 ```
@@ -137,7 +145,11 @@ duration_max <- duration %>%
   group_by(Season, Station, WY) %>%
   summarize(max_duration = max(duration)) %>% 
   pivot_wider(names_from = WY,values_from = "max_duration",values_fill = NA) %>%
-  pivot_longer(cols = c("2003":"2005"), names_to = "fWY", values_to = "max_duration")
+  pivot_longer(cols = c("2003":"2002"), names_to = "fWY", values_to = "max_duration")
+
+duration_station <- duration %>%
+  group_by(Station) %>%
+  summarize(n = n())
   
 ```
 
@@ -147,7 +159,8 @@ duration_max <- duration %>%
 ```{r}
 heatwave_sum_max<-temp_quantiles%>%
   group_by(Station, Month, fMonth)%>%
-  summarise(freq_99=sum(heatwave_99)/n(),
+  summarise(n = n(),
+            freq_99=sum(heatwave_99)/n(),
             freq_95=sum(heatwave_95)/n(),
             freq_90=sum(heatwave_90)/n(),
             .groups="drop")%>%
@@ -172,13 +185,19 @@ heatwave_sum_max_month_year<-temp_quantiles%>%
 
 heatwave_sum_max_year<-temp_quantiles%>%
   group_by(Station, Year)%>%
-  summarise(freq_99=sum(heatwave_99)/n(),
+  summarise(n = n(),
+            freq_99=sum(heatwave_99)/n(),
             freq_95=sum(heatwave_95)/n(),
             freq_90=sum(heatwave_90)/n(),
             .groups="drop")%>%
   pivot_longer(cols = c(freq_99, freq_95, freq_90), values_to="heatwave_freq", names_to="quantile", names_prefix="freq_")%>%
   mutate(quantile=as.integer(quantile)) %>%
   filter(quantile == 95)
+
+cutoffs<-temp_quantiles%>%
+  distinct(Station, Month, fMonth, temp_max_q99, temp_max_q95, temp_max_q90)%>%
+  pivot_longer(cols = c(temp_max_q99, temp_max_q95, temp_max_q90), values_to="cutoff", names_to="quantile", names_prefix="temp_max_q")%>%
+  mutate(quantile=as.integer(quantile))
 ```
 
 ## Plots
@@ -187,46 +206,6 @@ heatwave_sum_max_year<-temp_quantiles%>%
 * Include a map of air and water temp overlaid
 * Double check my year code for percentages
 
-### *Plot duration
-
-```{r}
-library(viridis)
-duration$Station <- factor(duration$Station, levels = station_order)
-duration$Season <- factor(duration$Season, levels = c("Winter", "Spring", "Summer", "Fall"))
-duration_max$Season <- factor(duration_max$Season, levels = c("Winter", "Spring", "Summer", "Fall"))
-
-# Comparing years - station facet
-ggplot(duration) + 
-  geom_point(aes(fYear, duration, color = Season), size =3) + 
-  facet_wrap(~Station, nrow = 2) +
-  viridis::scale_color_viridis(discrete = TRUE, option = "turbo") + 
-  theme_bw()+
-  theme(axis.text.x=element_text(angle=45, hjust=1),
-        legend.position = "top")
-
-# Comparing years - season facet
-ggplot(duration) + 
-  geom_point(aes(fYear, duration, color = Station), size = 2) + 
-  facet_wrap(~Season, nrow =4) +
-  viridis::scale_color_viridis(discrete = TRUE, option = "turbo") + 
-  theme_bw()+
-  theme(axis.text.x=element_text(angle=45, hjust=1),
-        legend.position = "top")
-
-
-# Maximum heat wave per season
-ggplot(duration_max) + 
-  geom_tile(aes(fWY, Season, fill = max_duration), color = "gray40") + 
-  facet_wrap(~Station, nrow = 2) +
-scale_fill_gradientn(na.value = "gray95", colours = viridis::plasma(7)) + 
-  labs(fill = "Maximum Duration \n(Days)") +
-  theme_bw()+
-  theme(axis.text.x=element_text(angle=45, hjust=1),
-        axis.title = element_blank(),
-        legend.position = "top")
-
-
-```
 
 
 ### *Plot quantile values
@@ -258,17 +237,17 @@ datatable(mutate(cutoff_table, cutoff=round(cutoff, 1)), rownames = FALSE,
           options = list(lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))))
 ```
 
-### Plot temperature values with quantiles
+### Plot temperature values
 ```{r, fig.height=8, fig.width=10}
 # with quantile values
-ggplot() + 
-  geom_jitter(data = temp_quantiles, aes(x = fMonth, y = temp_max), color = "gray80", shape = 2, size = 0.5) +
-  #geom_line(data = temp_quantile_values, aes(x = fMonth, y = temp, color = quantile))+
-  geom_point(data = temp_quantile_values, aes(x = fMonth, y = temp, color = quantile), size = 2) +
-  facet_grid(Year~Station) + 
-  viridis::scale_color_viridis(option = "turbo", discrete = TRUE) + 
-  theme_bw() +
-  theme(legend.position = "top")
+# ggplot() + 
+#   geom_jitter(data = temp_quantiles, aes(x = fMonth, y = temp_max), color = "gray80", shape = 2, size = 0.5) +
+#   #geom_line(data = temp_quantile_values, aes(x = fMonth, y = temp, color = quantile))+
+#   geom_point(data = temp_quantile_values, aes(x = fMonth, y = temp, color = quantile), size = 2) +
+#   facet_grid(Year~Station) + 
+#   viridis::scale_color_viridis(option = "turbo", discrete = TRUE) + 
+#   theme_bw() +
+#   theme(legend.position = "top")
 
 
 ggplot(temp_quantiles, aes(x=yday(date), y=temp_max))+
@@ -319,17 +298,265 @@ ggplot(heatwave_sum_max_month_year, aes(x=factor(Year), y=heatwave_freq, fill=St
   scale_y_continuous(expand=expansion(0,0))+
   scale_fill_viridis_d()+
   theme_bw()+
-  theme(axis.text.x=element_text(angle=45, hjust=1))
+     theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom", axis.title.x = element_blank(), plot.margin = margin(5, 40, 5, 5))
 ```
 
-### Plot heat wave frequency by space
+### Heatwave intensity
+By Month
 ```{r}
-heatwaves_sf <- right_join(sta_locations_sf, heatwave_sum_max_year ) %>%
-  filter(quantile == "95", fMonth == "Jul")
+temp_hw <- temp_quantiles %>% filter(heatwave_95 == 1L)
+(p_int_month <- ggplot(filter(temp_quantiles, heatwave_95==1L), 
+       aes(x=fMonth, y=heatwave_95_intensity, fill=Station, group=interaction(fMonth, Station)))+
+  geom_boxplot()+
+  scale_fill_viridis(name="Station", option = "turbo", discrete = TRUE)+
+  ylab("Heatwave Intensity")+
+  theme_bw() +
+     theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom", axis.title.x = element_blank(), plot.margin = margin(5, 40, 5, 5)))
+```
 
-ggplot() + 
-  geom_sf(data = heatwaves_sf, aes(color = heatwave_freq)) +
-  facet_wrap(~Year)+
-  theme(axis.text.x=element_text(angle=45, hjust=1))
+By Year
+```{r}
+(p_int_year <- ggplot(filter(temp_quantiles, heatwave_95==1L), 
+       aes(x=Year, y=heatwave_95_intensity, fill=Station, group=interaction(Year, Station)))+
+  geom_boxplot()+
+  scale_fill_viridis_d(name="Station", option = "turbo")+
+   scale_x_continuous(breaks = seq(2002, 2022, 1)) + 
+    ylab("Heatwave Intensity")+
+  theme_bw()+
+     theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom", axis.title.x = element_blank(), plot.margin = margin(5, 40, 5, 5)))
+```
+
+### *Duration
+```{r}
+library(viridis)
+duration$Station <- factor(duration$Station, levels = station_order)
+duration$Season <- factor(duration$Season, levels = c("Winter", "Spring", "Summer", "Fall"))
+duration_max$Season <- factor(duration_max$Season, levels = c("Winter", "Spring", "Summer", "Fall"))
+
+ggplot(filter(duration, duration>0), aes(x=Year, y=duration, fill=Station, group=interaction(Year, Station)))+
+  geom_jitter()+
+  scale_color_viridis_d(name="Station")+
+  theme_bw()
+
+(p_duration_y <- ggplot(filter(duration, duration>0)) + 
+  geom_jitter(aes(Year, duration, color = Station), size =2) + 
+  viridis::scale_color_viridis(discrete = TRUE, option = "turbo") + 
+     scale_x_continuous(breaks = seq(2002, 2022, 1)) + 
+    scale_y_continuous(expand = c(0,0)) +
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1),
+        legend.position = "bottom"))
+
+(p_duration_m <- ggplot(filter(duration, duration>0)) + 
+  geom_jitter(aes(fMonth, duration, color = Station), size =2) + 
+      scale_y_continuous(expand = c(0,0)) +
+  viridis::scale_color_viridis(discrete = TRUE, option = "turbo") + 
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1),
+        legend.position = "bottom"))
+
+# Comparing years - station facet
+ggplot(duration) + 
+  geom_jitter(aes(fYear, duration, color = Season), size =2) + 
+  facet_wrap(~Station, nrow = 2) +
+  viridis::scale_color_viridis(discrete = TRUE, option = "turbo") + 
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1),
+        legend.position = "top")
+
+# Comparing years - season facet
+ggplot(duration) + 
+  geom_jitter(aes(fYear, duration, color = Station), size = 2) + 
+  facet_wrap(~Season, nrow =4) +
+  viridis::scale_color_viridis(discrete = TRUE, option = "turbo") + 
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1),
+        legend.position = "top")
+
+
+# Comparing months
+ggplot(duration) + 
+  geom_jitter(aes(fMonth, duration, color = Station), size = 2) + 
+  viridis::scale_color_viridis(discrete = TRUE, option = "turbo") + 
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1),
+        legend.position = "top")
+
+ggplot(duration) + 
+  geom_boxplot(aes(fMonth, duration), size = 1) + 
+  viridis::scale_color_viridis(discrete = TRUE, option = "turbo") + 
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1),
+        legend.position = "top")
+
+# Maximum heat wave per season
+ggplot(duration_max) + 
+  geom_tile(aes(fWY, Season, fill = max_duration), color = "gray40") + 
+  facet_wrap(~Station, nrow = 2) +
+scale_fill_gradientn(na.value = "gray95", colours = viridis::plasma(7)) + 
+  labs(fill = "Maximum Duration \n(Days)") +
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1),
+        axis.title = element_blank(),
+        legend.position = "top")
+
+
+```
+
+## Final Plots
+
+### Temp cutoffs
+
+```{r}
+p<-ggplot(filter(cutoffs, quantile==95), aes(x=Month, y=cutoff, color=Station))+
+  geom_point(position=position_dodge(width=0.4), alpha=0.8)+
+  scale_color_viridis_d(name="")+
+  ylab("Temperature cutoff (°C)")+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom", plot.margin = margin(5, 40, 5, 5))
+p
+
+ggsave(plot=p, file="figs/temperature cutoffs.png", height=5, width=5)
+```
+
+
+### Proportion
+```{r, fig.height=9, fig.width=10}
+
+(p_m<-ggplot(filter(heatwave_sum_max, quantile==95), aes(x=Month, y=heatwave_freq, fill=Station))+
+  geom_bar(position=position_dodge(), stat = "identity")+
+  scale_y_continuous(expand=expansion(0,0))+
+  scale_fill_viridis_d(name="", option = "turbo")+
+  ylab("Heatwave frequency")+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom", 
+        axis.title.x = element_blank()))
+
+(p_y<-ggplot(filter(heatwave_sum_max_year, quantile==95), aes(x=Year, y=heatwave_freq, fill=Station))+
+  geom_bar(position=position_dodge(), stat = "identity")+
+  scale_y_continuous(expand=expansion(0,0))+
+    scale_x_continuous(breaks = seq(2002, 2022, 1)) + 
+  scale_fill_viridis_d(name="", option = "turbo")+
+  ylab("Heatwave frequency")+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom",
+        axis.title.x = element_blank()))
+
+
+(p<-p_y/p_m+plot_layout(guides="collect") &
+  theme(legend.position='bottom'))
+p
+
+png("figs/water heatwave results.png", height = 6, width = 10, units = "in", pointsize = 9,
+    res=300)
+p
+dev.off()
+
+```
+
+### Intensity
+```{r}
+(p_int<-p_int_year/p_int_month+plot_layout(guides="collect") &
+  theme(legend.position='bottom'))
+p_int
+
+png("figs/water_intensity.png", height = 8, width = 10, units = "in", pointsize = 9,
+    res=300)
+p_int
+dev.off()
+```
+
+### Duration
+```{r}
+(p_duration_y <- ggplot(filter(duration, duration>0)) + 
+  geom_jitter(aes(Year, duration, color = Station), size =2) + 
+  viridis::scale_color_viridis(discrete = TRUE, option = "turbo") + 
+     scale_x_continuous(breaks = seq(2002, 2022, 1)) + 
+   labs(y = "Heatwave duration (days)") +
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1),
+        axis.title.x = element_blank()))
+
+(p_duration_m <- ggplot(filter(duration, duration>0)) + 
+  geom_jitter(aes(fMonth, duration, color = Station), size =2) + 
+  viridis::scale_color_viridis(discrete = TRUE, option = "turbo") + 
+      labs(y = "Heatwave duration (days)") +
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1),
+        axis.title.x = element_blank()))
+
+(p_dur<-p_duration_y/p_duration_m+plot_layout(guides="collect") &
+  theme(legend.position='bottom'))
+p_dur
+
+png("figs/water_duration.png", height = 8, width = 9, units = "in", pointsize = 9,
+    res=300)
+p_dur
+dev.off()
+```
+
+
+
+## Summary tables
+```{r}
+cutoffs_95 <- filter(cutoffs, quantile == 95)
+cutoffs_summary <- cutoffs_95 %>%
+  group_by(fMonth) %>%
+  summarize(mean = mean(cutoff),
+            se = sd(cutoff)/sqrt(n()))
+
+heatwave <- temp_quantiles %>%
+  filter(heatwave_95 == 1)
+
+freq_month <- heatwave_sum_max %>%
+  mutate(
+    days = n*heatwave_freq,
+    mean_overall = mean(heatwave_freq, na.rm = TRUE)) %>%
+  group_by(fMonth, mean_overall) %>%
+  reframe(mean = mean(heatwave_freq, na.rm = TRUE),
+          se = sd(heatwave_freq, na.rm= TRUE)/sqrt(n()),
+          mean_days = mean(days, na.rm = TRUE)) %>%
+  distinct()
+
+freq_year <- heatwave_sum_max_year %>%
+  mutate(days = n*heatwave_freq,
+         mean_overall = mean(heatwave_freq, na.rm = TRUE),
+         days_overall = sum(n, na.rm = TRUE) * mean_overall,
+         fYear = factor(Year),
+         heatwave_freq = ifelse(is.na(heatwave_freq), 0, heatwave_freq)) %>%
+  group_by(fYear, mean_overall, days_overall) %>%
+  reframe(mean = mean(heatwave_freq, na.rm = TRUE),
+          se = sd(heatwave_freq, na.rm= TRUE)/sqrt(n()),
+          mean_days = mean(days, na.rm = TRUE)) %>%
+  distinct()
+
+int_month <- temp_quantiles %>%
+  mutate(mean_overall = mean(heatwave_95_intensity, na.rm = TRUE),
+         se_overall = sd(heatwave_95_intensity, na.rm = TRUE)/sqrt(n())) %>%
+  group_by(fMonth, mean_overall, se_overall) %>%
+  reframe(mean = mean(heatwave_95_intensity, na.rm = TRUE),
+          se = sd(heatwave_95_intensity, na.rm = TRUE)/sqrt(n()))
+
+int_year <- temp_quantiles %>%
+  group_by(Year) %>%
+  reframe(mean = mean(heatwave_95_intensity, na.rm = TRUE),
+          se = sd(heatwave_95_intensity, na.rm = TRUE)/sqrt(n()),
+          median = median(heatwave_95_intensity, na.rm = TRUE)) %>%
+  arrange(mean)
+
+duration_month <- duration %>%
+  mutate(mean_overall = mean(duration, na.rm = TRUE),
+         se_overall = sd(duration)/sqrt(n())) %>%
+  group_by(fMonth, mean_overall, se_overall) %>%
+  reframe(mean = mean(duration, na.rm = TRUE),
+          se = sd(duration)/sqrt(n()))
+
+
+duration_year<- duration %>%
+  group_by(Year) %>%
+  reframe(mean = mean(duration, na.rm = TRUE),
+          se = sd(duration)/sqrt(n())) %>%
+  arrange(mean)
+
 ```
 

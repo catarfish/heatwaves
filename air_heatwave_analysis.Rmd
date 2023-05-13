@@ -112,21 +112,21 @@ heatwave_dur<-temp_appt%>%
          Heatwave_id=as.integer(as.factor(Heatwave_id)))%>%
   fill(Heatwave_id, .direction="down")%>%
   group_by(major_city, Heatwave_id)%>%
-  summarise(duration_95=n(),
+  summarise(duration=n(),
             Date=min(date),
             temp_appt_mean=mean(temp_appt),
             intensity_mean=mean(heatwave_95_intensity),
             .groups="drop")%>%
   mutate(Month=month(Date, label=T),
          Year=year(Date),
-         duration_95=if_else(duration_95<3, 3, duration_95))
+         duration=if_else(duration<3, 3, duration))
 
 heatwave_dur_year<-heatwave_dur%>%
   group_by(Year, major_city)%>%
-  summarise(duration_95_mean=mean(duration_95),
-            duration_95_sd=sd(duration_95),
+  summarise(duration_mean=mean(duration),
+            duration_sd=sd(duration),
             .groups="drop")%>%
-  mutate(duration_95_sd=if_else(is.na(duration_95_sd), 0, duration_95_sd))
+  mutate(duration_sd=if_else(is.na(duration_sd), 0, duration_sd))
 
 heatwave_sum_month<-temp_appt%>%
   group_by(major_city, Month)%>%
@@ -162,13 +162,23 @@ cutoffs<-temp_appt%>%
 
 ```
 
+# Model changes over years
+```{r}
+model_dat<-heatwave_sum_year%>%
+  filter(quantile==95)%>%
+  mutate(Year_s=(Year-mean(Year))/sd(Year))
+
+mf1<-lm(heatwave_freq ~ Year_s*major_city, data=model_dat)
+
+summary(mf1)
+```
+
 # Heatwave data
 
 ```{r}
 datatable(mutate(heatwave_dur, across(c(temp_appt_mean, intensity_mean), ~round(.x, 2))), rownames = FALSE, 
           options = list(lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))))
 ```
-
 
 # Plots 
 
@@ -293,7 +303,7 @@ ggplot(heatwave_sum_year_month, aes(x=Year, y=heatwave_freq, fill=major_city))+
 ### Heatwave duration
 
 ```{r}
-ggplot(heatwave_dur, aes(x=Year, y=duration_95, color=major_city, group=interaction(Year, major_city)))+
+ggplot(heatwave_dur, aes(x=Year, y=duration, color=major_city, group=interaction(Year, major_city)))+
   geom_jitter(height=0, alpha=0.3)+
   scale_color_viridis_d(name="City")+
   facet_wrap(~major_city)+
@@ -303,8 +313,8 @@ ggplot(heatwave_dur, aes(x=Year, y=duration_95, color=major_city, group=interact
 
 Aggregated by year
 ```{r}
-ggplot(heatwave_dur_year, aes(x=Year, y=duration_95_mean, ymin=duration_95_mean-duration_95_sd, 
-                              ymax=duration_95_mean+duration_95_sd, color=major_city, 
+ggplot(heatwave_dur_year, aes(x=Year, y=duration_mean, ymin=duration_mean-duration_sd, 
+                              ymax=duration_mean+duration_sd, color=major_city, 
                               group=interaction(Year, major_city)))+
   geom_pointrange()+
   scale_color_viridis_d(name="City")+
@@ -348,7 +358,6 @@ p
 ggsave(plot=p, file="figs/air apparent temperature cutoffs.png", height=5, width=5)
 ```
 
-
 Results
 ```{r, fig.height=9, fig.width=10}
 p_y<-ggplot(filter(heatwave_sum_month, quantile==95), aes(x=Month, y=heatwave_freq, fill=major_city))+
@@ -359,13 +368,14 @@ p_y<-ggplot(filter(heatwave_sum_month, quantile==95), aes(x=Month, y=heatwave_fr
   theme_bw()+
   theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom")
 
-p_m<-ggplot(filter(heatwave_sum_year, quantile==95), aes(x=Year, y=heatwave_freq, fill=major_city))+
-  geom_bar(position=position_dodge(), stat = "identity")+
-  scale_y_continuous(expand=expansion(0,0))+
-  scale_fill_viridis_d(name="")+
-  ylab("Heatwave frequency")+
-  theme_bw()+
-  theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom")
+p_m<-ggplot(filter(heatwave_sum_year, quantile==95), aes(x=Year, y=heatwave_freq, fill=major_city, color=major_city))+
+    geom_bar(position=position_dodge(), stat = "identity")+
+    geom_smooth(method="lm", se=F, show.legend = FALSE)+
+    scale_y_continuous(expand=expansion(0,0))+
+    scale_fill_viridis_d(name="", aesthetics=c("color", "fill"))+
+    ylab("Heatwave frequency")+
+    theme_bw()+
+    theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom")
 
 p<-p_m/p_y+plot_layout(guides="collect") &
   theme(legend.position='bottom')

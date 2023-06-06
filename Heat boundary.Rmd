@@ -63,7 +63,7 @@ bound<-delta_suisun%>%
 bound<-st_multipolygon(lapply(bound, function(x) x[1]))%>%
   st_sfc(crs=26910)
 
-st_write(bound, "SBDS heat boundary/SBDS heat boundary.shp", delete_dsn=TRUE)
+st_write(bound, "shapefiles/SBDS heat boundary/SBDS heat boundary.shp", delete_dsn=TRUE)
 ```
 
 Plot the final boundary

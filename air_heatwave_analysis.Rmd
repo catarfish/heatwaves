@@ -11,6 +11,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+options(tigris_use_cache = TRUE)
 ```
 
 ```{r, message=FALSE}
@@ -22,6 +23,8 @@ library(ggplot2)
 library(zipcodeR)
 library(DT)
 library(patchwork)
+library(tigris)
+library(sf)
 ```
 
 # Load data
@@ -382,5 +385,16 @@ p<-p_m/p_y+plot_layout(guides="collect") &
 p
 
 ggsave(plot=p, file="figs/air heatwave frequency.png", height=6, width=10)
+```
+
+# Extract zip code shapefiles and write shapefile
+```{r}
+city_boundaries<-zctas(starts_with = zips$zipcode)%>%
+  left_join(zips, by=c("ZCTA5CE20"="zipcode"))%>%
+  group_by(major_city)%>%
+  summarise()%>%
+  st_transform(crs=26910)
+  
+st_write(city_boundaries, "shapefiles/SBDS city boundaries/SBDS city boundaries.shp", delete_dsn=TRUE)
 ```
 

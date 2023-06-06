@@ -65,7 +65,7 @@ temp_appt<-temp_max_raw%>%
   left_join(zips, by=c("zip"="zipcode"))%>%
   group_by(date, major_city)%>%
   summarise(temp_max=max(tmmx_C), .groups="drop")%>%
-  left_join(hum, temp_max, by=c("date", "major_city"))%>%
+  left_join(hum, by=c("date", "major_city"))%>%
   mutate(satvap=6.112*10^(7.5*temp_max/(237.7+temp_max)),
          actvap=(rh*satvap)/100,
          dewpt=(-430.22+237.7*log(actvap))/(-log(actvap)+19.08),

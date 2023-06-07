@@ -11,7 +11,6 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-options(tigris_use_cache = TRUE)
 ```
 
 ```{r, message=FALSE}
@@ -23,8 +22,6 @@ library(ggplot2)
 library(zipcodeR)
 library(DT)
 library(patchwork)
-library(tigris)
-library(sf)
 ```
 
 # Load data
@@ -68,7 +65,7 @@ temp_appt<-temp_max_raw%>%
   left_join(zips, by=c("zip"="zipcode"))%>%
   group_by(date, major_city)%>%
   summarise(temp_max=max(tmmx_C), .groups="drop")%>%
-  left_join(hum, by=c("date", "major_city"))%>%
+  left_join(hum, temp_max, by=c("date", "major_city"))%>%
   mutate(satvap=6.112*10^(7.5*temp_max/(237.7+temp_max)),
          actvap=(rh*satvap)/100,
          dewpt=(-430.22+237.7*log(actvap))/(-log(actvap)+19.08),
@@ -387,14 +384,7 @@ p
 ggsave(plot=p, file="figs/air heatwave frequency.png", height=6, width=10)
 ```
 
-# Extract zip code shapefiles and write shapefile
+### Write data to plot with water temp data
 ```{r}
-city_boundaries<-zctas(starts_with = zips$zipcode)%>%
-  left_join(zips, by=c("ZCTA5CE20"="zipcode"))%>%
-  group_by(major_city)%>%
-  summarise()%>%
-  st_transform(crs=26910)
-  
-st_write(city_boundaries, "shapefiles/SBDS city boundaries/SBDS city boundaries.shp", delete_dsn=TRUE)
+# save(cutoffs, temp_appt, heatwave_sum_month, heatwave_sum_year, heatwave_dur, heatwave_dur_year, file = here::here("data_clean/air_temp_data_for_plots.Rdata"))
 ```
-

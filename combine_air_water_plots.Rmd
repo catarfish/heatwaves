@@ -61,7 +61,7 @@ WW_Delta <- st_transform(WW_Delta, crs = my_crs)
 Make map
 ```{r}
 (map <- ggplot() +
-      geom_sf(data = WW_Delta %>% filter(!HNAME%in% c("SAN FRANCISCO BAY" , "SAN PABLO BAY")), color = "gray85", fill = "gray80") + 
+      geom_sf(data = WW_Delta %>% filter(!HNAME%in% c("SAN FRANCISCO BAY" , "SAN PABLO BAY")), color = "gray70", size = 1.5,  fill = "gray70") + 
   geom_sf(data = cities_sf, aes(fill = major_city),  alpha = 0.3 ,inherit.aes = FALSE) +
  # geom_sf_label(data = cities_sf, aes(label = City), 
  #                nudge_x = c(0.3, 0.5, 0.1, 0.1, 0.1), 
@@ -106,8 +106,6 @@ rm(cutoffs, heatwave_dur, heatwave_dur_year, heatwave_sum_month, heatwave_sum_ye
 load(file = here::here("data_clean/water_temp_data_for_plots.Rdata"))
 w_cutoffs = cutoffs %>% left_join(sta_cw)%>%
   mutate(StationName = factor(StationName, levels = station_order))
-w_heatwave_dur = duration %>% left_join(sta_cw)%>%
-  mutate(StationName = factor(StationName, levels = station_order))
 w_heatwave_dur_year = heatwave_dur_year%>% left_join(sta_cw)%>%
   mutate(StationName = factor(StationName, levels = station_order))
 w_heatwave_sum_month = heatwave_sum_max%>% left_join(sta_cw)%>%
@@ -150,10 +148,10 @@ p1_water<- ggplot(filter(w_cutoffs, quantile==95),
   theme_plots
 
 (p1 <- p1_air + p1_water)
-# 
-# png(file=here::here("figs/temperature_cutoffs.png"), height=5, width=10, units = "in", res = 300)
-# p1
-# dev.off()
+
+png(file=here::here("figs/temperature_cutoffs.png"), height=5, width=10, units = "in", res = 300)
+p1
+dev.off()
 ```
 
 Frequency 
@@ -225,7 +223,7 @@ p4_air <- ggplot(air_heatwave_dur_year, aes(x=Year, y=duration_mean, ymin=durati
   geom_pointrange()+
   scale_color_viridis_d(name="City")+
   facet_wrap(~major_city)+
-  ylab("Heatwave duration (days)")+
+  ylab("Air Heatwave duration (days)")+
   theme_plots
 
 p4_water <- ggplot(w_heatwave_dur_year, aes(x=Year, y=duration_mean, ymin=duration_mean-duration_sd, 
@@ -234,10 +232,10 @@ p4_water <- ggplot(w_heatwave_dur_year, aes(x=Year, y=duration_mean, ymin=durati
   geom_pointrange()+
   scale_color_viridis_d(name="StationName", option = "turbo")+
   facet_wrap(~StationName)+
-  ylab("Heatwave duration (days)")+
+  ylab("Water Heatwave duration (days)")+
   theme_plots
 
-(p4 <- p4_air / p4_water)
+(p4 <- p4_air / p4_water + plot_layout(heights = c(2,3)))
 
 
 png(file=here::here("figs/duration.png"), height=10, width=10, units = "in", res = 300, pointsize = 14)

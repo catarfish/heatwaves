@@ -193,7 +193,7 @@ duration_station <- duration %>%
 
 * Calculate heatwave frequency
 ```{r}
-heatwave_sum_max<-temp_quantiles%>%
+heatwave_sum_month<-temp_quantiles%>%
   group_by(Station, Month, fMonth)%>%
   summarise(n = n(),
             freq_99=sum(heatwave_99)/n(),
@@ -238,11 +238,18 @@ cutoffs<-temp_quantiles%>%
 
 ## Model changes over years
 ```{r}
-model_dat<-heatwave_sum_year%>%
+w_model_dat<-heatwave_sum_max_year%>%
   filter(quantile==95)%>%
   mutate(Year_s=(Year-mean(Year))/sd(Year))
 
-mf1<-lm(heatwave_freq ~ Year_s*major_city, data=model_dat)
+mf1<-lm(heatwave_freq ~ Year_s  *factor(Station), data=w_model_dat)
+summary(mf1)
+
+mf1<-lm(heatwave_freq ~ Year_s*Station, data=w_model_dat)
+summary(mf1)
+anova(mf1)
+par(mfrow = c(2,2))
+plot(mf1)
 
 summary(mf1)
 ```
@@ -463,7 +470,7 @@ scale_fill_gradientn(na.value = "gray95", colours = viridis::plasma(7)) +
 ## Final Plots
 
 ```{r}
-# save(cutoffs, heatwave_sum_max, heatwave_sum_max_year, heatwave_dur_year, file = here::here("data_clean/water_temp_data_for_plots.Rdata"))
+# save(cutoffs, heatwave_sum_month, heatwave_sum_max_year, heatwave_dur, heatwave_dur_year, temp_quantiles, file = here::here("data_clean/water_temp_data_for_plots.Rdata"))
 ```
 
 ### Temp cutoffs

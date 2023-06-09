@@ -1,0 +1,157 @@
+Location,Month,quantile,cutoff,Medium
+Pittsburg,Jan,95,18.75850361798844,Air
+Pittsburg,Feb,95,23.191500101084756,Air
+Pittsburg,Mar,95,27.64389150650277,Air
+Pittsburg,Apr,95,32.076833244154734,Air
+Pittsburg,May,95,36.6255210494,Air
+Pittsburg,Jun,95,41.95086041229345,Air
+Pittsburg,Jul,95,42.902025531389,Air
+Pittsburg,Aug,95,42.2215199028512,Air
+Pittsburg,Sep,95,40.91554639993111,Air
+Pittsburg,Oct,95,34.379935966512804,Air
+Pittsburg,Nov,95,25.31657699360614,Air
+Pittsburg,Dec,95,17.980220967070835,Air
+Isleton,Jan,95,18.748052624193576,Air
+Isleton,Feb,95,23.62665660058439,Air
+Isleton,Mar,95,29.269613809587113,Air
+Isleton,Apr,95,33.634113161664345,Air
+Isleton,May,95,39.68700869710608,Air
+Isleton,Jun,95,44.212403221746904,Air
+Isleton,Jul,95,45.931308930315296,Air
+Isleton,Aug,95,43.220173865063856,Air
+Isleton,Sep,95,42.21135284938359,Air
+Isleton,Oct,95,35.08734717779272,Air
+Isleton,Nov,95,26.229193646252067,Air
+Isleton,Dec,95,17.824695116795546,Air
+West Sacramento,Jan,95,18.422803569147714,Air
+West Sacramento,Feb,95,23.483564470139584,Air
+West Sacramento,Mar,95,28.665433346019967,Air
+West Sacramento,Apr,95,33.34869254891223,Air
+West Sacramento,May,95,39.7501562513889,Air
+West Sacramento,Jun,95,44.95133264850634,Air
+West Sacramento,Jul,95,46.78331410785428,Air
+West Sacramento,Aug,95,44.8712029102217,Air
+West Sacramento,Sep,95,42.56012371025363,Air
+West Sacramento,Oct,95,35.07687245192228,Air
+West Sacramento,Nov,95,25.963563604642488,Air
+West Sacramento,Dec,95,17.359990222438686,Air
+Sacramento,Jan,95,18.782200668325128,Air
+Sacramento,Feb,95,24.121213971618573,Air
+Sacramento,Mar,95,29.21887212514052,Air
+Sacramento,Apr,95,34.162947031706345,Air
+Sacramento,May,95,40.30424789282572,Air
+Sacramento,Jun,95,45.513638706695936,Air
+Sacramento,Jul,95,47.342181787736365,Air
+Sacramento,Aug,95,45.315182543994155,Air
+Sacramento,Sep,95,42.83626218872168,Air
+Sacramento,Oct,95,35.352605662779595,Air
+Sacramento,Nov,95,26.53427775979186,Air
+Sacramento,Dec,95,17.807271720256402,Air
+Stockton,Jan,95,19.374743265254182,Air
+Stockton,Feb,95,24.62751727030022,Air
+Stockton,Mar,95,30.457998917931583,Air
+Stockton,Apr,95,35.050289298362515,Air
+Stockton,May,95,41.38461509959095,Air
+Stockton,Jun,95,45.6965914903502,Air
+Stockton,Jul,95,47.16677178190222,Air
+Stockton,Aug,95,45.1582452871256,Air
+Stockton,Sep,95,43.93129331721982,Air
+Stockton,Oct,95,36.85893007832288,Air
+Stockton,Nov,95,27.486196391123958,Air
+Stockton,Dec,95,18.996609164603683,Air
+Collinsville,Jan,95,11.4,Water
+Collinsville,Feb,95,13.844999999999994,Water
+Collinsville,Mar,95,16.36999999999999,Water
+Collinsville,Apr,95,18.6,Water
+Collinsville,May,95,20.6,Water
+Collinsville,Jun,95,22.7,Water
+Collinsville,Jul,95,23.6,Water
+Collinsville,Aug,95,23.2,Water
+Collinsville,Sep,95,22.9,Water
+Collinsville,Oct,95,20.9,Water
+Collinsville,Nov,95,17.7,Water
+Collinsville,Dec,95,13.479999999999995,Water
+Goodyear Slough,Jan,95,13.2,Water
+Goodyear Slough,Feb,95,16.364999999999995,Water
+Goodyear Slough,Mar,95,19.6,Water
+Goodyear Slough,Apr,95,21.944999999999993,Water
+Goodyear Slough,May,95,23.635000000000005,Water
+Goodyear Slough,Jun,95,25.4,Water
+Goodyear Slough,Jul,95,26.05,Water
+Goodyear Slough,Aug,95,24.625000000000004,Water
+Goodyear Slough,Sep,95,23.9,Water
+Goodyear Slough,Oct,95,21.029999999999994,Water
+Goodyear Slough,Nov,95,17.3,Water
+Goodyear Slough,Dec,95,13.754999999999995,Water
+Jersey Point,Jan,95,11.185,Water
+Jersey Point,Feb,95,13.8,Water
+Jersey Point,Mar,95,16.779999999999998,Water
+Jersey Point,Apr,95,19.1,Water
+Jersey Point,May,95,21.3,Water
+Jersey Point,Jun,95,23.7,Water
+Jersey Point,Jul,95,24.6,Water
+Jersey Point,Aug,95,24.3,Water
+Jersey Point,Sep,95,23.585000000000004,Water
+Jersey Point,Oct,95,21.3,Water
+Jersey Point,Nov,95,17.6,Water
+Jersey Point,Dec,95,13.379999999999995,Water
+Martinez,Jan,95,11.9,Water
+Martinez,Feb,95,14.2,Water
+Martinez,Mar,95,16.9,Water
+Martinez,Apr,95,18.9,Water
+Martinez,May,95,20.979999999999997,Water
+Martinez,Jun,95,23.2,Water
+Martinez,Jul,95,24,Water
+Martinez,Aug,95,23.569999999999993,Water
+Martinez,Sep,95,23.2,Water
+Martinez,Oct,95,20.9,Water
+Martinez,Nov,95,17.8,Water
+Martinez,Dec,95,13.954999999999995,Water
+Rio Vista,Jan,95,11.3,Water
+Rio Vista,Feb,95,13.614999999999998,Water
+Rio Vista,Mar,95,16.9,Water
+Rio Vista,Apr,95,19,Water
+Rio Vista,May,95,21.35,Water
+Rio Vista,Jun,95,23.6,Water
+Rio Vista,Jul,95,24.2,Water
+Rio Vista,Aug,95,24,Water
+Rio Vista,Sep,95,23.3,Water
+Rio Vista,Oct,95,21.2,Water
+Rio Vista,Nov,95,16.7,Water
+Rio Vista,Dec,95,12.7,Water
+Rough And Ready Island,Jan,95,11.9,Water
+Rough And Ready Island,Feb,95,14.6,Water
+Rough And Ready Island,Mar,95,18.4,Water
+Rough And Ready Island,Apr,95,21.2,Water
+Rough And Ready Island,May,95,23.8,Water
+Rough And Ready Island,Jun,95,26.8,Water
+Rough And Ready Island,Jul,95,28.1,Water
+Rough And Ready Island,Aug,95,27.7,Water
+Rough And Ready Island,Sep,95,26.7,Water
+Rough And Ready Island,Oct,95,23.7,Water
+Rough And Ready Island,Nov,95,17.7,Water
+Rough And Ready Island,Dec,95,13.875,Water
+Sacramento River At Hood,Jan,95,11.6,Water
+Sacramento River At Hood,Feb,95,13.7,Water
+Sacramento River At Hood,Mar,95,17.1,Water
+Sacramento River At Hood,Apr,95,20.4,Water
+Sacramento River At Hood,May,95,22.8,Water
+Sacramento River At Hood,Jun,95,25.1,Water
+Sacramento River At Hood,Jul,95,25.1,Water
+Sacramento River At Hood,Aug,95,24.6,Water
+Sacramento River At Hood,Sep,95,23.8,Water
+Sacramento River At Hood,Oct,95,21.1,Water
+Sacramento River At Hood,Nov,95,16.2,Water
+Sacramento River At Hood,Dec,95,12.6,Water
+Vernalis,Jan,95,12.8,Water
+Vernalis,Feb,95,15.850000000000001,Water
+Vernalis,Mar,95,19.4,Water
+Vernalis,Apr,95,21.665,Water
+Vernalis,May,95,24.7,Water
+Vernalis,Jun,95,28.9,Water
+Vernalis,Jul,95,29.7,Water
+Vernalis,Aug,95,28.5,Water
+Vernalis,Sep,95,26.454999999999995,Water
+Vernalis,Oct,95,22.7,Water
+Vernalis,Nov,95,16.8,Water
+Vernalis,Dec,95,12.9,Water

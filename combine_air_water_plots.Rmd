@@ -169,8 +169,7 @@ w_heatwave_sum_year = heatwave_sum_max_year%>% left_join(sta_cw)%>%
   select(Location = StationName, everything())%>%
   mutate(Medium = "Water")
 w_temp = temp_quantiles%>% left_join(sta_cw)%>%
-  mutate(StationName = factor(StationName, levels = station_order),
-         fMonth = month(Month, label = TRUE, abbr = TRUE))
+  mutate(StationName = factor(StationName, levels = station_order))
 w_temp_intensity <- w_temp %>%
   filter(!is.na(heatwave_95_intensity)) %>%
   group_by(StationName) %>%
@@ -198,10 +197,13 @@ w_intensity_month <- w_temp %>%
 heatwave_sum_month <- rbind(air_heatwave_sum_month, w_heatwave_sum_month)
 heatwave_sum_year <- rbind(air_heatwave_sum_year, w_heatwave_sum_year)
 cutoffs <- rbind(air_cutoffs, w_cutoffs)
+cutoffs_95 <- cutoffs %>% filter(quantile == 95)
 duration <- rbind(air_heatwave_dur, w_heatwave_dur)
 intensity_year <- rbind(w_temp_intensity, air_temp_intensity)
 
 # rm(cutoffs, heatwave_dur, heatwave_dur_year, heatwave_sum_max, heatwave_sum_max_year)
+write_csv(cutoffs_95, "data_clean/cutoffs_95quantile_month_station.csv")
+write_csv(duration, "data_clean/heatwave_duration.csv")
 ```
 
 
@@ -225,7 +227,7 @@ p1_air<-ggplot(filter(air_cutoffs, quantile==95), aes(x=Month, y=cutoff, color=L
   geom_point(position=position_dodge(width=0.4), alpha=0.8)+
   scale_color_viridis_d(name="")+
   scale_y_continuous(breaks = seq(15, 50, 5)) + 
-  ylab("Apparent temperature cutoff (°C)")+
+  labs(title = "A", y = "Apparent temperature cutoff (°C)")+
   theme_plots
 
 p1_water<- ggplot(filter(w_cutoffs, quantile==95), 
@@ -233,7 +235,7 @@ p1_water<- ggplot(filter(w_cutoffs, quantile==95),
   geom_point(position=position_dodge(width=0.4), alpha=0.8)+
   scale_color_viridis_d(name="", option = "turbo")+
    scale_y_continuous(breaks = seq(5, 50, 5)) + 
-  ylab("Water temperature cutoff (°C)")+
+  labs(title = "B", y = "Water temperature cutoff (°C)")+
   theme_plots
 
 (p1 <- p1_air / p1_water)
@@ -249,7 +251,7 @@ dev.off()
   geom_bar(position=position_dodge(), stat = "identity")+
   scale_y_continuous(expand=expansion(0,0))+
   scale_fill_viridis_d(name="")+
-  ylab("Air Heatwave frequency")+
+  labs(title = "A", y = "Air Heatwave frequency")+
   guides(fill = guide_legend(nrow = 2, byrow = TRUE)) +
     theme_plots)
 
@@ -257,7 +259,7 @@ dev.off()
   geom_bar(position=position_dodge(), stat = "identity")+
   scale_y_continuous(expand=expansion(0,0))+
   scale_fill_viridis_d(name="", option = "turbo")+
-  ylab("Water Heatwave frequency")+
+  labs(title = "C", y = "Water Heatwave frequency")+
   guides(fill = guide_legend(nrow = 3, byrow = TRUE)) +
   theme_plots)
 
@@ -282,7 +284,7 @@ dev.off()
     scale_y_continuous(expand=expansion(0,0))+
    scale_x_continuous(breaks = seq(1999, 2022, 2)) +
     scale_fill_viridis_d(name="", aesthetics=c("color", "fill"))+
-    ylab("Air Heatwave frequency")+
+    labs(title = "B", y = "Air Heatwave frequency")+
   guides(color = guide_legend(nrow = 2, byrow = TRUE)) +
     theme_plots)
 
@@ -292,7 +294,7 @@ dev.off()
     scale_y_continuous(expand=expansion(0,0))+
    scale_x_continuous(breaks = seq(2002, 2022, 2)) +
     scale_fill_viridis_d(name="", aesthetics=c("color", "fill"), option = "turbo")+
-    ylab("Water Heatwave frequency")+
+    labs(title = "D", y = "Water Heatwave frequency")+
   guides(color = guide_legend(nrow = 3, byrow = TRUE)) +
     theme_plots)
 
@@ -322,7 +324,7 @@ dev.off()
   geom_hline((aes(yintercept = meanDuration, color = major_city)), linetype = "longdash") + 
   scale_color_viridis_d(name="City")+
   facet_wrap(~major_city)+
-  ylab("Air Heatwave duration (days)")+
+  labs(title = "A", y = "Air Heatwave duration (days)")+
   scale_x_continuous(breaks = seq(1999, 2022, 2)) +
   theme_plots)
 
@@ -334,7 +336,7 @@ dev.off()
   scale_color_viridis_d(name="StationName", option = "turbo")+
   scale_x_continuous(breaks = seq(1999, 2022, 2)) +
   facet_wrap(~StationName)+
-  ylab("Water Heatwave duration (days)")+
+  labs(title = "B", y = "Water Heatwave duration (days)")+
   theme_plots)
 
 (p4 <- p4_air / p4_water + plot_layout(heights = c(2,3)))
@@ -361,7 +363,7 @@ duration_month <- duration %>%
   geom_hline((aes(yintercept = meanDuration, color = Location)), linetype = "longdash") + 
   scale_color_viridis_d(name="City")+
   facet_wrap(~Location)+
-  ylab("Air Heatwave duration (days)")+
+  labs(title = "A", y = "Air Heatwave duration (days)")+
   # scale_x_continuous(breaks = seq(1999, 2022, 2)) +
   theme_plots)
 
@@ -372,7 +374,7 @@ duration_month <- duration %>%
   geom_hline((aes(yintercept = meanDuration, color = Location)), linetype = "longdash") + 
   scale_color_viridis_d(option = "turbo")+
   facet_wrap(~Location)+
-  ylab("Water Heatwave duration (days)")+
+  labs(title = "B", y = "Water Heatwave duration (days)")+
   # scale_x_continuous(breaks = seq(1999, 2022, 2)) +
   theme_plots)
 
@@ -400,7 +402,7 @@ dev.off()
     facet_wrap(~Location) + 
   scale_color_viridis_d()+
    scale_x_continuous(breaks = seq(1999, 2022, 2)) + 
-    ylab("Air Heatwave Intensity")+
+    labs(title = "A", y = "Air Heatwave Intensity")+
   theme_plots)
 
 (p5_water <- ggplot(filter(w_temp_intensity, heatwave_95==1L), 
@@ -411,7 +413,7 @@ dev.off()
     facet_wrap(~Location) + 
   scale_color_viridis_d(option = "turbo")+
    scale_x_continuous(breaks = seq(2002, 2022, 2)) + 
-    ylab("Water Heatwave Intensity")+
+    labs(title = "B", y = "Water Heatwave Intensity")+
   theme_plots)
 
 (p6_air <- ggplot(filter(air_intensity_month, heatwave_95==1L), 
@@ -422,7 +424,7 @@ dev.off()
     facet_wrap(~Location) + 
   scale_color_viridis_d()+
    # scale_x_continuous() + 
-    ylab("Air Heatwave Intensity")+
+    labs(title = "A", y = "Air Heatwave Intensity")+
   theme_plots)
 
 (p6_water <- ggplot(filter(w_intensity_month, heatwave_95==1L), 
@@ -433,7 +435,7 @@ dev.off()
     facet_wrap(~Location) + 
   scale_color_viridis_d(option = "turbo")+
    # scale_x_continuous(breaks = seq(2002, 2022, 2)) + 
-    ylab("Water Heatwave Intensity")+
+    labs(title = "B", y = "Water Heatwave Intensity")+
   theme_plots)
 
 # p5_air <- ggplot(filter(air_temp, heatwave_95==1L), 

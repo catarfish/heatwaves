@@ -242,11 +242,12 @@ w_model_dat<-heatwave_sum_max_year%>%
   filter(quantile==95)%>%
   mutate(Year_s=(Year-mean(Year))/sd(Year))
 
-mf1<-lm(heatwave_freq ~ Year_s  *factor(Station), data=w_model_dat)
+mf1<-lm(heatwave_freq ~ Year_s + factor(Station) , data=w_model_dat)
 summary(mf1)
 
-mf1<-lm(heatwave_freq ~ Year_s*Station, data=w_model_dat)
-summary(mf1)
+mf2<-lm(heatwave_freq ~ Year_s* factor(Station), data=w_model_dat)
+summary(mf2)
+
 anova(mf1)
 par(mfrow = c(2,2))
 plot(mf1)

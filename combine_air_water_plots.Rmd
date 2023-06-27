@@ -202,8 +202,62 @@ duration <- rbind(air_heatwave_dur, w_heatwave_dur)
 intensity_year <- rbind(w_temp_intensity, air_temp_intensity)
 
 # rm(cutoffs, heatwave_dur, heatwave_dur_year, heatwave_sum_max, heatwave_sum_max_year)
-write_csv(cutoffs_95, "data_clean/cutoffs_95quantile_month_station.csv")
-write_csv(duration, "data_clean/heatwave_duration.csv")
+# write_csv(cutoffs_95, "data_clean/cutoffs_95quantile_month_station.csv")
+# write_csv(duration, "data_clean/heatwave_duration.csv")
+```
+
+# Make station table
+```{r}
+latlons_filtered <- latlons %>%
+  filter(Station %in% stations) %>%
+  dplyr::select(Station, StationName, Latitude, Longitude)
+
+sta_table <-  temp_quantiles %>%
+  arrange(Station, date) %>%
+  group_by(Station) %>%
+  summarize(StartDate = min(date),
+            EndDate = max(date),
+            n = n()) %>%
+  left_join(latlons_filtered) %>%
+  dplyr::select(Station, StationName, Latitude, Longitude, StartDate, EndDate)
+
+write_csv(sta_table, "data_clean/watertemp_station_table.csv")
+```
+
+```{r}
+w_heatwave_dur %>%
+  group_by(Location) %>%
+  summarize(n = n())
+
+heatwave_sum_month %>%
+  group_by(Location, Medium) %>%
+  summarize(mean = mean(heatwave_freq, na.rm = TRUE)) %>%
+  arrange(Medium, mean)
+
+heatwave_dur%>%
+  group_by(Station) %>%
+  summarize(mean = mean(duration, na.rm = TRUE)) %>%
+  arrange(mean)
+
+air_heatwave_dur%>%
+  group_by(Location) %>%
+  summarize(mean = mean(duration, na.rm = TRUE)) %>%
+  arrange(mean)
+
+intensity_year%>%
+  group_by(Medium, Location) %>%
+  summarize(mean = mean(meanIntensity, na.rm = TRUE)) %>%
+  arrange(Medium, mean)
+
+air_heatwave_dur%>%
+  group_by(Location) %>%
+  summarize(mean = mean(intensity_mean, na.rm = TRUE)) %>%
+  arrange(mean)
+
+heatwave_dur%>%
+  group_by(Station) %>%
+  summarize(mean = mean(intensity_mean, na.rm = TRUE)) %>%
+  arrange(mean)
 ```
 
 
@@ -260,7 +314,7 @@ dev.off()
   scale_y_continuous(expand=expansion(0,0))+
   scale_fill_viridis_d(name="", option = "turbo")+
   labs(title = "C", y = "Water Heatwave frequency")+
-  guides(fill = guide_legend(nrow = 3, byrow = TRUE)) +
+  guides(fill = guide_legend(nrow = 4, byrow = TRUE)) +
   theme_plots)
 
 (p2<-ggplot(filter(heatwave_sum_month, quantile==95), aes(x=Month, y=heatwave_freq, fill=Location))+
@@ -295,7 +349,7 @@ dev.off()
    scale_x_continuous(breaks = seq(2002, 2022, 2)) +
     scale_fill_viridis_d(name="", aesthetics=c("color", "fill"), option = "turbo")+
     labs(title = "D", y = "Water Heatwave frequency")+
-  guides(color = guide_legend(nrow = 3, byrow = TRUE)) +
+  guides(color = guide_legend(nrow = 4, byrow = TRUE)) +
     theme_plots)
 
 (p3 <- p3_air / p3_water)
@@ -307,7 +361,7 @@ dev.off()
 # p3
 # dev.off()
 
-png(file=here::here("figs/heatwave_freq.png"), height=8, width=11, units = "in", res = 300, pointsize = 14)
+png(file=here::here("figs/heatwave_freq.png"), height=7.5, width=11, units = "in", res = 300, pointsize = 10)
 p2p3
 dev.off()
 

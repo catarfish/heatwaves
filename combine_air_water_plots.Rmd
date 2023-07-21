@@ -31,6 +31,14 @@ cities <- st_read(here::here("shapefiles/SBDS city boundaries/SBDS city boundari
 cities_sf <- st_transform(cities, crs = my_crs) %>%
   mutate(major_city = factor(major_city, levels = air_order))
 
+# boundaries -------------
+# delta source: https://gis-california.opendata.arcgis.com/datasets/57b02f8a5e77465f902376dbd9522585_0/explore?location=38.135048%2C-121.109000%2C8.00 file created 7/21
+# sm source: https://gis.data.ca.gov/datasets/643785963c664e48a8fba3f0e1506160_0/about file created 7/11/2023
+
+delta <- st_read(here::here("data_raw/shapefiles/i03_LegalDeltaBoundary.shp")) 
+sm <- st_read(here::here("data_raw/shapefiles/i03_SuisunMarshBoundary.shp"))
+
+
 # Metropolitan areas (via Census Designated Places)
 # cities <- places(state = "CA", year = 2018, cb = TRUE)%>%
 #   filter(NAME %in% c("Isleton", "Pittsburg","Sacramento", "Stockton", "West Sacramento" ))%>%
@@ -57,16 +65,20 @@ sta_cw <- sta_locations_26910 %>%
   mutate(StationName = factor(StationName, levels = station_order))
 
 WW_Delta <- st_transform(WW_Delta, crs = my_crs)
+WW_legal_delta <- st_transform(delta, crs = my_crs)
+WW_suisun <- st_transform(sm, crs = my_crs)
 ```
 
 Make map
 ```{r}
 library(ggnewscale)
 (map <- ggplot() +
-   geom_sf(data = WW_Delta %>% filter(!HNAME%in% c("SAN FRANCISCO BAY" , "SAN PABLO BAY")), color = "gray60", size = 1.5,  fill = "gray60") + 
+   geom_sf(data = WW_Delta %>% filter(!HNAME%in% c("SAN FRANCISCO BAY" , "SAN PABLO BAY")), color = "gray60", size = 1.5,  fill = "gray80") + 
    geom_sf(data = cities_sf, aes(fill = major_city),  alpha = 0.3 , inherit.aes = FALSE) +
+    geom_sf(data = WW_legal_delta, color = "black", fill = NA, size = 2, linetype = "dashed") + 
+    geom_sf(data = WW_suisun, color = "black", fill = NA, size = 2, linetype = "dashed") + 
    scale_fill_viridis_d()+
-    guides(fill = FALSE)+
+    guides(fill = "none")+
   geom_sf_label(data = cities_sf, aes(label = major_city),
                 hjust = c(0.7, -0.5, 0, 0, 1), 
                 vjust = c(-0.8, 1.3, 0, -0.5, 2),

@@ -22,6 +22,7 @@ library(ggplot2)
 library(zipcodeR)
 library(DT)
 library(patchwork)
+require(sf)
 ```
 
 # Load data
@@ -36,6 +37,22 @@ zips<-bind_rows(
   search_city('Isleton','CA'))%>%
   select(zipcode, major_city)
 ```
+
+```{r}
+zip_gps<-read_csv("shapefiles/zip_gps.csv")%>%
+  mutate(ZCTA5=as.character(ZCTA5))%>%
+  left_join(zips, by=c("ZCTA5"="zipcode"))%>%
+  filter(!is.na(major_city))%>%
+  st_as_sf(coords=c("lon", "lat"), crs=4326)%>%
+  group_by(major_city)%>%
+  summarise()%>%
+  st_convex_hull()
+
+ggplot()+
+  geom_sf(data=zip_gps, aes(fill=major_city), alpha=0.4)+
+  theme_bw()
+```
+
 
 Load humidity data
 ```{r}

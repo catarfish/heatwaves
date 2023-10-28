@@ -38,7 +38,6 @@ cities_sf <- st_transform(cities, crs = my_crs) %>%
 delta <- st_read(here::here("data_raw/shapefiles/i03_LegalDeltaBoundary.shp")) 
 sm <- st_read(here::here("data_raw/shapefiles/i03_SuisunMarshBoundary.shp"))
 
-
 # Metropolitan areas (via Census Designated Places)
 # cities <- places(state = "CA", year = 2018, cb = TRUE)%>%
 #   filter(NAME %in% c("Isleton", "Pittsburg","Sacramento", "Stockton", "West Sacramento" ))%>%
@@ -66,27 +65,49 @@ sta_cw <- sta_locations_26910 %>%
 
 WW_Delta <- st_transform(WW_Delta, crs = my_crs)
 WW_legal_delta <- st_transform(delta, crs = my_crs)
-WW_suisun <- st_transform(sm, crs = my_crs)
+WW_suisun <- st_transform(sm, crs = my_crs) 
+
+spts <- st_coordinates(WW_suisun)
+smat <- matrix(c(spts[,1], spts[,2]), ncol = 2)
+s.id <- chull(smat)
+s.id <- c(s.id, s.id[1])
+plot(s.id)
+lines(smat[s.id,])
+plot(concaveman::concaveman(smat, 0.01, 1))
 ```
 
 Make map
 ```{r}
 library(ggnewscale)
+library(ggspatial)
 (map <- ggplot() +
-   geom_sf(data = WW_Delta %>% filter(!HNAME%in% c("SAN FRANCISCO BAY" , "SAN PABLO BAY")), color = "gray60", size = 1.5,  fill = "gray80") + 
+   # geom_sf(data = WW_Delta %>% filter(!HNAME%in% c("SAN FRANCISCO BAY")), color = "gray60", size = 1.5,  fill = "gray80") + 
+    geom_sf(data = WW_Delta, color = "gray70", size = 1.5,  fill = "gray80") + 
    geom_sf(data = cities_sf, aes(fill = major_city),  alpha = 0.3 , inherit.aes = FALSE) +
-    geom_sf(data = WW_legal_delta, color = "black", fill = NA, size = 2, linetype = "dashed") + 
-    geom_sf(data = WW_suisun, color = "black", fill = NA, size = 2, linetype = "dashed") + 
+   geom_sf(data = WW_legal_delta, color = "black", fill = NA, linewidth = 0.5, linetype = "dashed") + 
+   # geom_sf(data = WW_suisun, color = "firebrick1", fill = NA, linewidth = 0.6, linetype = "dotted") + 
    scale_fill_viridis_d()+
-    guides(fill = "none")+
-  geom_sf_label(data = cities_sf, aes(label = major_city),
-                hjust = c(0.7, -0.5, 0, 0, 1), 
-                vjust = c(-0.8, 1.3, 0, -0.5, 2),
+   guides(fill = "none")+
+   geom_sf_label(data = cities_sf, aes(label = major_city),
+                hjust = c(-0.9, 0.5, 0, -0.5, 1.15), 
+                vjust = c(0, 2.2, 0, -1.4, 0),
+                label.padding = unit(0.25, "lines"),
+                # Isleton| Pittsburg | Sacramento | Stockton | West Sacramento 
                 colour = "black",  size = 3.5, inherit.aes = FALSE)+
-  new_scale_fill() +
-  geom_sf(data = sta_locations_26910, aes(fill = StationName), shape = 21, color = "black", size = 3.5, inherit.aes = FALSE) +
-  scale_x_continuous(limits = c(570000, 671000)) +
-  scale_fill_viridis_d(option = "turbo") + 
+   new_scale_fill() +
+   geom_sf(data = sta_locations_26910, aes(shape = StationName), color = "navy", size = 3.5, inherit.aes = FALSE) +
+    annotate(geom = "text", x = 554000, y = 4214282,  label = "San Pablo Bay", fontface = "italic", size = 3) +
+    annotate(geom = "text", x = 585000, y = 4214282,  label = "Suisun Bay", fontface = "italic", size = 3) +
+    annotate(geom = "text", x = 590000, y = 4224282,  label = "Suisun Marsh", fontface = "italic", size = 3) +
+   scale_shape_manual(values = c(0, 6, 8, 17, 18, 19, 14, 15))+
+   scale_x_continuous(limits = c(540000, 671000)) +
+    annotation_north_arrow(location = "tl", which_north = "true", 
+        pad_x = unit(.05, "in"), pad_y = unit(0.1, "in"),
+        style = north_arrow_fancy_orienteering,
+        height = unit(1.5, "cm"),
+  width = unit(2, "cm"),) +
+  annotation_scale(location = "br", bar_cols = c("black", "white", "black", "white"), text_cex = 1) +
+  # scale_fill_viridis_d(option = "turbo") + 
   labs(color = "Water temperature\nStations") +
   theme_bw() +
   theme(axis.title = element_blank(),
@@ -97,7 +118,7 @@ library(ggnewscale)
 
 Write map
 ```{r}
-png("figs/map_temperature_stations.png", height = 7, width = 8, units = "in", pointsize = 9,
+png("figs/map_temperature_stations_v2.png", height = 7, width = 8, units = "in",
     res=300)
 map
 dev.off()

@@ -310,10 +310,12 @@ theme_plots <- theme_bw()+
 
 # Temp cutoffs
 ```{r}
+cutoff_range<-range(c(filter(air_cutoffs, quantile==95)$cutoff, filter(w_cutoffs, quantile==95)$cutoff))
+
 p1_air<-ggplot(filter(air_cutoffs, quantile==95), aes(x=Month, y=cutoff, color=Location))+
   geom_point(position=position_dodge(width=0.4), alpha=0.8)+
   scale_color_viridis_d(name="")+
-  scale_y_continuous(breaks = seq(15, 50, 5)) + 
+  scale_y_continuous(breaks = seq(5, 50, 5), limits=cutoff_range) + 
   labs(title = "A", y = "Apparent temperature cutoff (°C)")+
   theme_plots
 
@@ -321,7 +323,7 @@ p1_water<- ggplot(filter(w_cutoffs, quantile==95),
                   aes(x=Month, y=cutoff, color=Location))+
   geom_point(position=position_dodge(width=0.4), alpha=0.8)+
   scale_color_viridis_d(name="", option = "turbo")+
-   scale_y_continuous(breaks = seq(5, 50, 5)) + 
+   scale_y_continuous(breaks = seq(5, 50, 5), limits=cutoff_range) + 
   labs(title = "B", y = "Water temperature cutoff (°C)")+
   theme_plots
 

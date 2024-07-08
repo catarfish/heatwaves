@@ -27,9 +27,13 @@ my_crs<-26910
 stations <- c("RRI", "CLL", "SRH", "GYS", "MRZ", "VER", "RIV", "JER")
 station_order <- c("Martinez","Goodyear Slough","Collinsville", "Rio Vista", "Jersey Point", "Sacramento River At Hood", "Rough And Ready Island", "Vernalis")
 air_order <- c("Pittsburg", "Isleton", "West Sacramento", "Sacramento", "Stockton")
-cities <- st_read(here::here("shapefiles/SBDS city boundaries/SBDS city boundaries.shp"))
+cities <- st_read(here::here("shapefiles/SBDS city boundaries/SBDS city boundaries.shp")) # from air_heatwave_analysis.Rmd
 cities_sf <- st_transform(cities, crs = my_crs) %>%
-  mutate(major_city = factor(major_city, levels = air_order))
+  mutate(major_city = factor(major_city, levels = air_order),
+         lat=st_coordinates(st_centroid(geometry))[,"Y"],
+         lon=st_coordinates(st_centroid(geometry))[,"X"],
+         lat_nudge=c(0, 2.2, 0, -1.4, 0),
+         lon_nudge=c(-0.9, 0.5, 0, -0.5, 1.15))
 
 # boundaries -------------
 # delta source: https://gis-california.opendata.arcgis.com/datasets/57b02f8a5e77465f902376dbd9522585_0/explore?location=38.135048%2C-121.109000%2C8.00 file created 7/21
@@ -37,16 +41,6 @@ cities_sf <- st_transform(cities, crs = my_crs) %>%
 
 delta <- st_read(here::here("data_raw/shapefiles/i03_LegalDeltaBoundary.shp")) 
 sm <- st_read(here::here("data_raw/shapefiles/i03_SuisunMarshBoundary.shp"))
-
-# Metropolitan areas (via Census Designated Places)
-# cities <- places(state = "CA", year = 2018, cb = TRUE)%>%
-#   filter(NAME %in% c("Isleton", "Pittsburg","Sacramento", "Stockton", "West Sacramento" ))%>%
-#   select(geometry)%>%
-#   st_transform(crs=my_crs) 
-# cities_sf <- data.frame(City =  c("Stockton","Sacramento",  "Isleton", "Pittsburg" ,"West Sacramento" )) %>%
-#   cbind(cities) %>%
-#   st_as_sf() %>%
-#   mutate(City = factor(City))
 
 latlons <- read_csv("https://portal.edirepository.org/nis/dataviewer?packageid=edi.591.2&entityid=a059f5eea4f8500fe1a43566451ec593")
 sta_locations_sf <- latlons %>%
@@ -88,12 +82,11 @@ library(ggspatial)
    # geom_sf(data = WW_suisun, color = "firebrick1", fill = NA, linewidth = 0.6, linetype = "dotted") + 
    scale_fill_viridis_d()+
    guides(fill = "none")+
-   geom_sf_label(data = cities_sf, aes(label = major_city),
-                hjust = c(-0.9, 0.5, 0, -0.5, 1.15), 
-                vjust = c(0, 2.2, 0, -1.4, 0),
+   geom_label(data = cities_sf, aes(x=lon+lon_nudge, y=lat+lat_nudge, 
+                                    label = paste(major_city, format(population, big.mark=","), sep="\n")),
                 label.padding = unit(0.25, "lines"),
                 # Isleton| Pittsburg | Sacramento | Stockton | West Sacramento 
-                colour = "black",  size = 3.5, inherit.aes = FALSE)+
+                colour = "black",  size = 3.5, inherit.aes = FALSE, alpha=0.6)+
    new_scale_fill() +
    geom_sf(data = sta_locations_26910, aes(shape = StationName), color = "navy", size = 3.5, inherit.aes = FALSE) +
     annotate(geom = "text", x = 554000, y = 4214282,  label = "San Pablo Bay", fontface = "italic", size = 3) +

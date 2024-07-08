@@ -11,6 +11,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+options(tigris_use_cache = TRUE)
 ```
 
 ```{r, message=FALSE}
@@ -22,7 +23,8 @@ library(ggplot2)
 library(zipcodeR)
 library(DT)
 library(patchwork)
-require(sf)
+library(tigris)
+library(sf)
 ```
 
 # Load data
@@ -35,7 +37,7 @@ zips<-bind_rows(
   search_city('West Sacramento','CA'),
   search_city('Pittsburg','CA'),
   search_city('Isleton','CA'))%>%
-  select(zipcode, major_city)
+  select(zipcode, major_city, population)
 ```
 
 ```{r}
@@ -405,5 +407,12 @@ ggsave(plot=p, file="figs/air heatwave frequency.png", height=6, width=10)
 
 ### Write data to plot with water temp data
 ```{r}
+city_boundaries<-zctas(starts_with = zips$zipcode)%>%
+  left_join(zips, by=c("ZCTA5CE20"="zipcode"))%>%
+  group_by(major_city)%>%
+  summarise(population=sum(population))%>%
+  st_transform(crs=26910)
+  
+st_write(city_boundaries, "shapefiles/SBDS city boundaries/SBDS city boundaries.shp", delete_dsn=TRUE)
 # save(cutoffs, temp_appt, heatwave_sum_month, heatwave_sum_year, heatwave_dur, heatwave_dur_year, temp_appt, file = here::here("data_clean/air_temp_data_for_plots.Rdata"))
 ```

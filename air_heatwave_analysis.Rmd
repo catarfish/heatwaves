@@ -25,6 +25,15 @@ library(DT)
 library(patchwork)
 library(tigris)
 library(sf)
+library(slider)
+
+date_slider<-function(date){
+  out<-sort(unique(yday(seq(date-days(15), date+days(15), by="1 days"))))
+  if(length(out)!=31){
+    stop("something went wrong and length isn't 31")
+  }
+  return(out)
+}
 ```
 
 # Load data
@@ -79,7 +88,7 @@ temp_max_raw<-read_csv("data_clean/gridmet_temperature_CAzip_99to22.csv",
                        col_types=cols_only(zip="c", date="D",
                                            lat="d", lon="d", tmmx_C="d"))
 
-temp_appt<-temp_max_raw%>%
+temp_appt_raw<-temp_max_raw%>%
   filter(zip%in%zips$zipcode)%>%
   left_join(zips, by=c("zip"="zipcode"))%>%
   group_by(date, major_city)%>%
@@ -91,11 +100,14 @@ temp_appt<-temp_max_raw%>%
          temp_appt=-2.653+(0.994*temp_max)+0.0153*(dewpt*dewpt),
          major_city=factor(major_city, levels=c("Pittsburg", "Isleton", "West Sacramento", "Sacramento", "Stockton")),
          Month=month(date),
-         Year=year(date))%>%
-  group_by(Month, major_city)%>%
-  mutate(temp_appt_q99=quantile(temp_appt, 0.99),
-         temp_appt_q95=quantile(temp_appt, 0.95),
-         temp_appt_q90=quantile(temp_appt, 0.90))%>%
+         Year=year(date),
+         doy=yday(date))
+
+temp_appt<-temp_appt_raw%>%
+  rowwise()%>%
+  mutate(temp_appt_q99=quantile(temp_appt_raw$temp_appt[temp_appt_raw$doy%in%date_slider(date) & temp_appt_raw$major_city==major_city], 0.99),
+         temp_appt_q95=quantile(temp_appt_raw$temp_appt[temp_appt_raw$doy%in%date_slider(date) & temp_appt_raw$major_city==major_city], 0.95),
+         temp_appt_q90=quantile(temp_appt_raw$temp_appt[temp_appt_raw$doy%in%date_slider(date) & temp_appt_raw$major_city==major_city], 0.90))%>%
   ungroup()%>%
   group_by(major_city)%>%
   mutate(temp_appt_l1=lag(temp_appt, 1, order_by=date),
@@ -177,7 +189,8 @@ heatwave_sum_year_month<-temp_appt%>%
   mutate(quantile=as.integer(quantile))
 
 cutoffs<-temp_appt%>%
-  distinct(major_city, Month, temp_appt_q99, temp_appt_q95, temp_appt_q90)%>%
+  group_by(major_city, Month)%>%
+  summarise(temp_appt_q99=mean(temp_appt_q99), temp_appt_q95=mean(temp_appt_q95), temp_appt_q90=mean(temp_appt_q90), .groups="drop")%>%
   pivot_longer(cols = c(temp_appt_q99, temp_appt_q95, temp_appt_q90), values_to="cutoff", names_to="quantile", names_prefix="temp_appt_q")%>%
   mutate(quantile=as.integer(quantile))
 
@@ -390,13 +403,13 @@ p_y<-ggplot(filter(heatwave_sum_month, quantile==95), aes(x=Month, y=heatwave_fr
   theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom")
 
 p_m<-ggplot(filter(heatwave_sum_year, quantile==95), aes(x=Year, y=heatwave_freq, fill=major_city, color=major_city))+
-    geom_bar(position=position_dodge(), stat = "identity")+
-    geom_smooth(method="lm", se=F, show.legend = FALSE)+
-    scale_y_continuous(expand=expansion(0,0))+
-    scale_fill_viridis_d(name="", aesthetics=c("color", "fill"))+
-    ylab("Heatwave frequency")+
-    theme_bw()+
-    theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom")
+  geom_bar(position=position_dodge(), stat = "identity")+
+  geom_smooth(method="lm", se=F, show.legend = FALSE)+
+  scale_y_continuous(expand=expansion(0,0))+
+  scale_fill_viridis_d(name="", aesthetics=c("color", "fill"))+
+  ylab("Heatwave frequency")+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom")
 
 p<-p_m/p_y+plot_layout(guides="collect") &
   theme(legend.position='bottom')
@@ -412,7 +425,7 @@ city_boundaries<-zctas(starts_with = zips$zipcode)%>%
   group_by(major_city)%>%
   summarise(population=sum(population))%>%
   st_transform(crs=26910)
-  
+
 st_write(city_boundaries, "shapefiles/SBDS city boundaries/SBDS city boundaries.shp", delete_dsn=TRUE)
 # save(cutoffs, temp_appt, heatwave_sum_month, heatwave_sum_year, heatwave_dur, heatwave_dur_year, temp_appt, file = here::here("data_clean/air_temp_data_for_plots.Rdata"))
 ```

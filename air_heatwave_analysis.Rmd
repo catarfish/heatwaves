@@ -34,6 +34,13 @@ date_slider<-function(date){
   }
   return(out)
 }
+
+heatwave_detector<-function(temp, threshold){
+  r<-rle(temp>threshold)
+  r$values<-r$lengths >= 3 & r$values
+  out<-inverse.rle(r)
+  return(out)
+}
 ```
 
 # Load data
@@ -58,10 +65,6 @@ zip_gps<-read_csv("shapefiles/zip_gps.csv")%>%
   group_by(major_city)%>%
   summarise()%>%
   st_convex_hull()
-
-ggplot()+
-  geom_sf(data=zip_gps, aes(fill=major_city), alpha=0.4)+
-  theme_bw()
 ```
 
 
@@ -105,27 +108,16 @@ temp_appt_raw<-temp_max_raw%>%
 
 temp_appt<-temp_appt_raw%>%
   rowwise()%>%
-  mutate(temp_appt_q99=quantile(temp_appt_raw$temp_appt[temp_appt_raw$doy%in%date_slider(date) & temp_appt_raw$major_city==major_city], 0.99),
-         temp_appt_q95=quantile(temp_appt_raw$temp_appt[temp_appt_raw$doy%in%date_slider(date) & temp_appt_raw$major_city==major_city], 0.95),
-         temp_appt_q90=quantile(temp_appt_raw$temp_appt[temp_appt_raw$doy%in%date_slider(date) & temp_appt_raw$major_city==major_city], 0.90))%>%
+  mutate(data_doy=list(temp_appt_raw$temp_appt[temp_appt_raw$doy%in%date_slider(date) & temp_appt_raw$major_city==major_city]),
+         temp_appt_q99=quantile(data_doy, 0.99),
+         temp_appt_q95=quantile(data_doy, 0.95),
+         temp_appt_q90=quantile(data_doy, 0.90))%>%
+  select(-data_doy)%>%
   ungroup()%>%
   group_by(major_city)%>%
-  mutate(temp_appt_l1=lag(temp_appt, 1, order_by=date),
-         temp_appt_l2=lag(temp_appt, 2, order_by=date),
-         temp_appt_ln1=lead(temp_appt, 1, order_by=date),
-         temp_appt_ln2=lead(temp_appt, 2, order_by=date),
-         heatwave_99=if_else((temp_appt>temp_appt_q99 & temp_appt_l1>temp_appt_q99 & temp_appt_l2>temp_appt_q99) | # Current day and prior 2 days above cutoff
-                               (temp_appt>temp_appt_q99 & temp_appt_ln1>temp_appt_q99 & temp_appt_ln2>temp_appt_q99) | # Current day and next 2 days above cutoff
-                               (temp_appt>temp_appt_q99 & temp_appt_ln1>temp_appt_q99 & temp_appt_l1>temp_appt_q99),  # current day and day before and after are above cutoff
-                             TRUE, FALSE),
-         heatwave_95=if_else((temp_appt>temp_appt_q95 & temp_appt_l1>temp_appt_q95 & temp_appt_l2>temp_appt_q95) |
-                               (temp_appt>temp_appt_q95 & temp_appt_ln1>temp_appt_q95 & temp_appt_ln2>temp_appt_q95) |
-                               (temp_appt>temp_appt_q95 & temp_appt_ln1>temp_appt_q95 & temp_appt_l1>temp_appt_q95), 
-                             TRUE, FALSE),
-         heatwave_90=if_else((temp_appt>temp_appt_q90 & temp_appt_l1>temp_appt_q90 & temp_appt_l2>temp_appt_q90) |
-                               (temp_appt>temp_appt_q90 & temp_appt_ln1>temp_appt_q90 & temp_appt_ln2>temp_appt_q90) |
-                               (temp_appt>temp_appt_q90 & temp_appt_ln1>temp_appt_q90 & temp_appt_l1>temp_appt_q90), 
-                             TRUE, FALSE),
+  mutate(heatwave_99=heatwave_detector(temp_appt, temp_appt_q99),
+         heatwave_95=heatwave_detector(temp_appt, temp_appt_q95),
+         heatwave_90=heatwave_detector(temp_appt, temp_appt_q90),
          heatwave_95_intensity=if_else(heatwave_95, temp_appt/temp_appt_q95, NA))%>%
   ungroup()%>%
   mutate(Month=month(Month, label=T))%>%

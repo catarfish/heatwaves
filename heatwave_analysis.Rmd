@@ -23,6 +23,7 @@ library(mapview)
 library(DT)
 library(patchwork)
 library(viridis)
+source("heatwave functions.R")
 ```
 
 ## Read data - filter to stations of interest
@@ -58,6 +59,7 @@ dailytemp <- tempdata %>%
          fMonth = factor(fMonth),
          Year = year(date),
          WY = ifelse(Month > 9, Year + 1, Year),
+         doy = yday(date),
          Season = case_when(Month %in% c(10, 11, 12) ~ "Fall",
                             Month %in% c(1, 2,3) ~ "Winter",
                             Month %in% c(4, 5, 6) ~ "Spring",
@@ -81,41 +83,22 @@ dailytemp %>%
 * Calculate quantiles for mean, max, min
 * Classify as heatwave if 3+ days over quantiles
 ```{r}
-temp_quantiles = dailytemp %>%
-  filter(Year>2001) %>%
-  #filter(Month %in% c(5, 6, 7, 8, 9, 10)) %>%
-  dplyr::group_by(Station, Month, fMonth) %>%
-  mutate(temp_max_q99 = quantile(temp_max, 0.99),
-         temp_max_q95 = quantile(temp_max, 0.95),
-         temp_max_q90 = quantile(temp_max, 0.90))%>%
-         # temp_mean_q99 = quantile(temp_mean, 0.99),
-         # temp_mean_q95 = quantile(temp_mean, 0.95),
-         # temp_mean_q90 = quantile(temp_mean, 0.90),
-         # temp_min_q99 = quantile(temp_min, 0.99),
-         # temp_min_q95 = quantile(temp_min, 0.95),
-         # temp_min_q90 = quantile(temp_min, 0.90)) 
-  ungroup() %>%
+dailytemp_2001<-dailytemp%>%
+  filter(Year>2001)
+
+temp_quantiles = dailytemp_2001  %>%
+  rowwise()%>%
+  mutate(data_doy=list(dailytemp_2001$temp_max[dailytemp_2001$doy%in%date_slider(date) & dailytemp_2001$Station==Station]),
+         temp_max_q99=quantile(data_doy, 0.99),
+         temp_max_q95=quantile(data_doy, 0.95),
+         temp_max_q90=quantile(data_doy, 0.90))%>%
+  select(-data_doy)%>%
+  ungroup()%>%
   dplyr::group_by(Station) %>%
-  mutate(temp_max_l1 = lag(temp_max, 1, order_by = date),
-         temp_max_l2 = lag(temp_max, 2, order_by = date),
-         temp_max_ln1 = lead(temp_max, 1, order_by = date),
-         temp_max_ln2 = lead(temp_max, 2, order_by = date),
-         heatwave_99=if_else((temp_max>temp_max_q99 & temp_max_l1>temp_max_q99 & temp_max_l2>temp_max_q99) | (temp_max>temp_max_q99 & temp_max_ln1>temp_max_q99 & temp_max_ln2>temp_max_q99) | (temp_max>temp_max_q99 & temp_max_ln1>temp_max_q99 & temp_max_l1>temp_max_q99), 1L, 0L),
-         heatwave_95=if_else((temp_max>temp_max_q95 & temp_max_l1>temp_max_q95 & temp_max_l2>temp_max_q95) | (temp_max>temp_max_q95 & temp_max_ln1>temp_max_q95 & temp_max_ln2>temp_max_q95) | (temp_max>temp_max_q95 & temp_max_ln1>temp_max_q95 & temp_max_l1>temp_max_q95), 1L, 0L),
-         heatwave_90=if_else((temp_max>temp_max_q90 & temp_max_l1>temp_max_q90 & temp_max_l2>temp_max_q90) | (temp_max>temp_max_q90 & temp_max_ln1>temp_max_q90 & temp_max_ln2>temp_max_q90) | (temp_max>temp_max_q90 & temp_max_ln1>temp_max_q90 & temp_max_l1>temp_max_q90), 1L, 0L),
-         # # min
-         # temp_min_l1 = lag(temp_min, 1, order_by = date),
-         # temp_min_l2 = lag(temp_min, 2, order_by = date),
-         # heatwave_99=if_else(temp_min>temp_min_q99 & temp_min_l1>temp_min_q99 & temp_min_l2>temp_min_q99, 1L, 0L),
-         # heatwave_95=if_else(temp_min>temp_min_q95 & temp_min_l1>temp_min_q95 & temp_min_l2>temp_min_q95, 1L, 0L),
-         # heatwave_90=if_else(temp_min>temp_min_q90 & temp_min_l1>temp_min_q90 & temp_min_l2>temp_min_q90, 1L, 0L),
-         # # mean
-         # temp_mean_l1 = lag(temp_mean, 1, order_by = date),
-         # temp_mean_l2 = lag(temp_mean, 2, order_by = date),
-         # heatwave_99=if_else(temp_mean>temp_mean_q99 & temp_mean_l1>temp_mean_q99 & temp_mean_l2>temp_mean_q99, 1L, 0L),
-         # heatwave_95=if_else(temp_mean>temp_mean_q95 & temp_mean_l1>temp_mean_q95 & temp_mean_l2>temp_mean_q95, 1L, 0L),
-         # heatwave_90=if_else(temp_mean>temp_mean_q90 & temp_mean_l1>temp_mean_q90 & temp_mean_l2>temp_mean_q90, 1L, 0L),
-        heatwave_95_intensity=if_else(heatwave_95==1L, temp_max/temp_max_q95, NA)) %>%
+  mutate(heatwave_99=heatwave_detector(temp_max, temp_max_q99),
+         heatwave_95=heatwave_detector(temp_max, temp_max_q95),
+         heatwave_90=heatwave_detector(temp_max, temp_max_q90),
+        heatwave_95_intensity=if_else(heatwave_95, temp_max/temp_max_q95, NA)) %>%
   ungroup()%>%
   arrange(Station,date)
 
@@ -126,7 +109,7 @@ temp_quantiles$Station <- factor(temp_quantiles$Station, levels = station_order)
 ```{r}
 # sam's code ----------------------
 heatwave_dur <- temp_quantiles %>%
-  filter(heatwave_95 == 1L) %>%
+  filter(heatwave_95) %>%
   group_by(Station) %>%
   mutate(Lag = date-lag(date, order_by = date)) %>%
   ungroup() %>%
@@ -231,7 +214,7 @@ heatwave_sum_max_year<-temp_quantiles%>%
   filter(quantile == 95)
 
 cutoffs<-temp_quantiles%>%
-  distinct(Station, Month, fMonth, temp_max_q99, temp_max_q95, temp_max_q90)%>%
+  distinct(Station, doy, temp_max_q99, temp_max_q95, temp_max_q90)%>%
   pivot_longer(cols = c(temp_max_q99, temp_max_q95, temp_max_q90), values_to="cutoff", names_to="quantile", names_prefix="temp_max_q")%>%
   mutate(quantile=as.integer(quantile))
 ```
@@ -477,10 +460,11 @@ scale_fill_gradientn(na.value = "gray95", colours = viridis::plasma(7)) +
 ### Temp cutoffs
 
 ```{r}
-p<-ggplot(filter(cutoffs, quantile==95), aes(x=Month, y=cutoff, color=Station))+
-  geom_point(position=position_dodge(width=0.4), alpha=0.8)+
+p<-ggplot(filter(cutoffs, quantile==95), aes(x=doy, y=cutoff, color=Station, group=Station))+
+  geom_line(alpha=0.8)+
   scale_color_viridis_d(name="")+
   ylab("Temperature cutoff (°C)")+
+  xlab("Day of year")+
   theme_bw()+
   theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom", plot.margin = margin(5, 40, 5, 5))
 p

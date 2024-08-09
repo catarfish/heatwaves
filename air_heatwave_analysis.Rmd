@@ -26,21 +26,7 @@ library(patchwork)
 library(tigris)
 library(sf)
 library(slider)
-
-date_slider<-function(date){
-  out<-sort(unique(yday(seq(date-days(15), date+days(15), by="1 days"))))
-  if(length(out)!=31){
-    stop("something went wrong and length isn't 31")
-  }
-  return(out)
-}
-
-heatwave_detector<-function(temp, threshold){
-  r<-rle(temp>threshold)
-  r$values<-r$lengths >= 3 & r$values
-  out<-inverse.rle(r)
-  return(out)
-}
+source("heatwave functions.R")
 ```
 
 # Load data
@@ -181,7 +167,7 @@ heatwave_sum_year_month<-temp_appt%>%
   mutate(quantile=as.integer(quantile))
 
 cutoffs<-temp_appt%>%
-  group_by(major_city, Month)%>%
+  group_by(major_city, doy)%>%
   summarise(temp_appt_q99=mean(temp_appt_q99), temp_appt_q95=mean(temp_appt_q95), temp_appt_q90=mean(temp_appt_q90), .groups="drop")%>%
   pivot_longer(cols = c(temp_appt_q99, temp_appt_q95, temp_appt_q90), values_to="cutoff", names_to="quantile", names_prefix="temp_appt_q")%>%
   mutate(quantile=as.integer(quantile))
@@ -258,8 +244,8 @@ ggplot(temp_appt, aes(x=yday(date), y=temp_appt))+
 ### Plot apparent temperature cutoffs
 
 ```{r}
-ggplot(cutoffs, aes(x=Month, y=cutoff, color=quantile))+
-  geom_point()+
+ggplot(cutoffs, aes(x=doy, y=cutoff, color=quantile, group=interaction(quantile, major_city)))+
+  geom_line()+
   facet_wrap(~major_city)+
   scale_color_viridis_c(breaks=c(90, 95, 99))+
   ylab("Apparent temperature cutoff (°C)")+
@@ -373,10 +359,11 @@ ggplot(filter(temp_appt, heatwave_95),
 Temp cutoffs
 
 ```{r}
-p<-ggplot(filter(cutoffs, quantile==95), aes(x=Month, y=cutoff, color=major_city))+
-  geom_point(position=position_dodge(width=0.4), alpha=0.8)+
+p<-ggplot(filter(cutoffs, quantile==95), aes(x=doy, y=cutoff, color=major_city, group=major_city))+
+  geom_line(alpha=0.8)+
   scale_color_viridis_d(name="")+
   ylab("Apparent temperature cutoff (°C)")+
+  xlab("Day of year")+
   theme_bw()+
   theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom", plot.margin = margin(5, 40, 5, 5))
 p

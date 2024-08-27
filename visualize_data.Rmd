@@ -27,15 +27,25 @@ library(tidyr)
     a) **“The World Meteorological Organization defines it as five or more consecutive days during which the daily maximum temperature surpasses the average maximum temperature by 5 °C (9 °F) or more.”**
     b) **this indicator defines a heat wave as a period of two or more consecutive days where the daily minimum apparent temperature at a particular weather station is higher than the 85th percentile of historical July and August temperatures for that city. Historical July and August baseline temperatures are analyzed for a base period of 1981–2010, which NCEI chose for consistency with other climatology metrics. Using the 85th percentile of July and August temperatures results in a threshold that equates to the nine hottest July and August days in an average year during that 30-year window. These are likely among the nine hottest days of the year.**
     c) What is the average maximum temperature? Delta-wide mean over 10 years? Just July and August?
-    d) What is the equivalence of 5C in water temp? Look at relationship of air vs. water? 
-    e) minimum or maximum temperatures? 
+      * 2+ days over 90th percentile mean/max/min monthly temp
+    d) minimum or maximum temperatures? (try all)
 2. What stations do we want to look at? 
+  - longest running stations, 4 to 5 stations that represent across Delta
+  - Use same regions/stations for air
 
+3. Air and water temp 
+  - need humidity data too 
+  - scripps data for air (zip codes)
+
+4. How many/what years?
+  - last 10 to 20 years
 ### Analyses/Visualizations
 
-3. When do heatwaves occur? (Seasonality)
-4. Where do heatwaves occur? (Regions)
-5. Has frequency, duration (hours vs total days in a row), length of heat wave season, intensity changed over time?
+4. When do heatwaves occur? (Seasonality)
+5. Where do heatwaves occur? (Regions)
+6. Has frequency, duration (hours vs total days in a row), length of heat wave season, intensity changed over time?
+* trends over time 
+* below freezing days (air temp) + consecutive below freezing days + intensity freezing days (mean temp) 
 
 ### References
 

@@ -32,8 +32,8 @@ cities_sf <- st_transform(cities, crs = my_crs) %>%
   mutate(major_city = factor(major_city, levels = air_order),
          lat=st_coordinates(st_centroid(geometry))[,"Y"],
          lon=st_coordinates(st_centroid(geometry))[,"X"],
-         lat_nudge=c(0, 2.2, 0, -1.4, 0),
-         lon_nudge=c(-0.9, 0.5, 0, -0.5, 1.15))
+         lat_nudge=c(0, -12000, 0, 0, 0),
+         lon_nudge=c(10000, 0, 25000, 20000, -20000))
 
 # boundaries -------------
 # delta source: https://gis-california.opendata.arcgis.com/datasets/57b02f8a5e77465f902376dbd9522585_0/explore?location=38.135048%2C-121.109000%2C8.00 file created 7/21

@@ -68,18 +68,6 @@ dailytemp_wide<-dailytemp%>%
          doy=yday(date))
 ```
 
-## Imputation models
-```{r}
-MRZ_m<-gam(MRZ~te(doy, year, GYS, bs=c("cc", "cr", "cr"), k=c(20, 10, 5)), data=dailytemp_wide)
-pred<-predict(MRZ_m, newdata=dailytemp_wide)
-dailytemp_wide$pred_MRZ<-pred
-ggplot(dailytemp_wide, aes(x=date))+
-  geom_point(aes(y=MRZ))+
-  geom_line(aes(y=pred_MRZ), alpha=0.4, color="red")+
-  theme_bw()
-```
-
-
 ## imputation
 ```{r fig.width=12}
 dailytemp_imp<-dailytemp%>%

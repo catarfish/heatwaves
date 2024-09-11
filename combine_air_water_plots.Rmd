@@ -146,24 +146,24 @@ air_heatwave_sum_year = heatwave_sum_year %>%
   mutate(Medium = "Air")
 air_temp <- temp_appt 
 air_temp_intensity <- air_temp %>%
-  filter(!is.na(heatwave_95_intensity)) %>%
+  filter(!is.na(heatwave_90_intensity)) %>%
   group_by(major_city) %>%
-  mutate(Intensity = mean(heatwave_95_intensity, na.rm = TRUE)) %>%
+  mutate(Intensity = mean(heatwave_90_intensity, na.rm = TRUE)) %>%
   ungroup() %>%
-  group_by(major_city, Year, heatwave_95, Intensity) %>%
-  summarize(meanIntensity = mean(heatwave_95_intensity, na.rm = TRUE),
-         sd = sd(heatwave_95_intensity, na.rm = TRUE)) %>%
+  group_by(major_city, Year, heatwave_90, Intensity) %>%
+  summarize(meanIntensity = mean(heatwave_90_intensity, na.rm = TRUE),
+         sd = sd(heatwave_90_intensity, na.rm = TRUE)) %>%
   ungroup() %>%
   rename(Location = major_city)%>%
   mutate(Medium = "Air")
 air_intensity_month <- air_temp %>%
-  filter(!is.na(heatwave_95_intensity)) %>%
+  filter(!is.na(heatwave_90_intensity)) %>%
   group_by(major_city) %>%
-  mutate(Intensity = mean(heatwave_95_intensity, na.rm = TRUE)) %>%
+  mutate(Intensity = mean(heatwave_90_intensity, na.rm = TRUE)) %>%
   ungroup() %>%
-  group_by(major_city, Month, heatwave_95, Intensity) %>%
-  summarize(meanIntensity = mean(heatwave_95_intensity, na.rm = TRUE),
-         sd = sd(heatwave_95_intensity, na.rm = TRUE)) %>%
+  group_by(major_city, Month, heatwave_90, Intensity) %>%
+  summarize(meanIntensity = mean(heatwave_90_intensity, na.rm = TRUE),
+         sd = sd(heatwave_90_intensity, na.rm = TRUE)) %>%
   ungroup() %>%
   rename(Location = major_city)%>%
   mutate(Medium = "Air")
@@ -205,24 +205,24 @@ w_heatwave_sum_year = heatwave_sum_max_year%>% left_join(sta_cw)%>%
 w_temp = temp_quantiles%>% left_join(sta_cw)%>%
   mutate(StationName = factor(StationName, levels = station_order))
 w_temp_intensity <- w_temp %>%
-  filter(!is.na(heatwave_95_intensity)) %>%
+  filter(!is.na(heatwave_90_intensity)) %>%
   group_by(StationName) %>%
-  mutate(Intensity = mean(heatwave_95_intensity, na.rm = TRUE)) %>%
+  mutate(Intensity = mean(heatwave_90_intensity, na.rm = TRUE)) %>%
   ungroup() %>%
-  group_by(StationName, Year, heatwave_95, Intensity) %>%
-  summarize(meanIntensity = mean(heatwave_95_intensity, na.rm = TRUE),
-         sd = sd(heatwave_95_intensity, na.rm = TRUE)) %>%
+  group_by(StationName, Year, heatwave_90, Intensity) %>%
+  summarize(meanIntensity = mean(heatwave_90_intensity, na.rm = TRUE),
+         sd = sd(heatwave_90_intensity, na.rm = TRUE)) %>%
   ungroup() %>%
   rename(Location = StationName)%>%
   mutate(Medium = "Water")
 w_intensity_month <- w_temp %>%
-  filter(!is.na(heatwave_95_intensity)) %>%
+  filter(!is.na(heatwave_90_intensity)) %>%
   group_by(StationName) %>%
-  mutate(Intensity = mean(heatwave_95_intensity, na.rm = TRUE)) %>%
+  mutate(Intensity = mean(heatwave_90_intensity, na.rm = TRUE)) %>%
   ungroup() %>%
-  group_by(StationName, fMonth, heatwave_95, Intensity) %>%
-  summarize(meanIntensity = mean(heatwave_95_intensity, na.rm = TRUE),
-         sd = sd(heatwave_95_intensity, na.rm = TRUE)) %>%
+  group_by(StationName, fMonth, heatwave_90, Intensity) %>%
+  summarize(meanIntensity = mean(heatwave_90_intensity, na.rm = TRUE),
+         sd = sd(heatwave_90_intensity, na.rm = TRUE)) %>%
   ungroup()  %>%
   rename(Location = StationName)%>%
   mutate(Medium = "Water")
@@ -231,29 +231,26 @@ w_intensity_month <- w_temp %>%
 heatwave_sum_month <- rbind(air_heatwave_sum_month, w_heatwave_sum_month)
 heatwave_sum_year <- rbind(air_heatwave_sum_year, w_heatwave_sum_year)
 cutoffs <- rbind(air_cutoffs, w_cutoffs)
-cutoffs_95 <- cutoffs %>% filter(quantile == 95) 
+cutoffs_90 <- cutoffs %>% filter(quantile == 90) 
 duration <- rbind(air_heatwave_dur, w_heatwave_dur)
 intensity_year <- rbind(w_temp_intensity, air_temp_intensity)
 
 # rm(cutoffs, heatwave_dur, heatwave_dur_year, heatwave_sum_max, heatwave_sum_max_year)
-# write_csv(cutoffs_95, "data_clean/cutoffs_95quantile_month_station.csv")
+# write_csv(cutoffs_90, "data_clean/cutoffs_90quantile_month_station.csv")
 # write_csv(duration, "data_clean/heatwave_duration.csv")
 ```
 
 ```{r}
 model_dat_air<-air_heatwave_sum_year%>%
-  filter(quantile==95)%>%
+  filter(quantile==90)%>%
   mutate(Year_s=(Year-mean(Year))/sd(Year))
 
 mf1<-lm(heatwave_freq ~ Year_s * Location, data=model_dat_air)
 
 summary(mf1)
 
-  
-
-
 model_dat_w<-w_heatwave_sum_year%>%
-  filter(quantile==95)%>%
+  filter(quantile==90)%>%
   mutate(Year_s=(Year-mean(Year))/sd(Year))
 
 mf1w<-lm(heatwave_freq ~ Year_s * Location, data=model_dat_w)
@@ -263,8 +260,6 @@ mf2w<-lm(heatwave_freq ~ Year_s + Location, data=model_dat_w)
 summary(mf1w)
 plot(mf1w)
 
-
-
 heatwave_sum_max_month_year<-temp_quantiles%>%
   group_by(Station, Year, fMonth)%>%
   summarise(freq_99=sum(heatwave_99)/n(),
@@ -273,19 +268,19 @@ heatwave_sum_max_month_year<-temp_quantiles%>%
             .groups="drop")%>%
   tidyr::pivot_longer(cols = c(freq_99, freq_95, freq_90), values_to="heatwave_freq", names_to="quantile", names_prefix="freq_")%>%
   mutate(quantile=as.integer(quantile))%>%
-  filter(quantile == 95)
+  filter(quantile == 90)
 
 w_model_dat2<-heatwave_sum_max_month_year%>%
-  filter(quantile==95)%>%
+  filter(quantile==90)%>%
   mutate(Year_s=(Year-mean(Year))/sd(Year))
 
 library(lmerTest)
 library(lme4)
 mf3w <- lmer(heatwave_freq ~ Year_s * factor(Station) + (1|fMonth), data=w_model_dat2)
 summary(mf3w)
-anova(mf3, type = 2)
+anova(mf3w, type = 2)
 
-plot(mf3)
+plot(mf3w)
 ```
 
 # Make station table
@@ -359,9 +354,9 @@ theme_plots <- theme_bw()+
 
 # Temp cutoffs
 ```{r}
-cutoff_range<-range(c(filter(air_cutoffs, quantile==95)$cutoff, filter(w_cutoffs, quantile==95)$cutoff))
+cutoff_range<-range(c(filter(air_cutoffs, quantile==90)$cutoff, filter(w_cutoffs, quantile==90)$cutoff))
 
-p1_air<-ggplot(filter(air_cutoffs, quantile==95), aes(x=date_, y=cutoff, color=Location))+
+p1_air<-ggplot(filter(air_cutoffs, quantile==90), aes(x=date_, y=cutoff, color=Location))+
   geom_line(position=position_dodge(width=0.4), linewidth = 1)+
   scale_color_viridis_d(name="")+
   scale_y_continuous(breaks = seq(5, 50, 5), limits=cutoff_range) + 
@@ -369,7 +364,7 @@ p1_air<-ggplot(filter(air_cutoffs, quantile==95), aes(x=date_, y=cutoff, color=L
   labs(title = "A", y = "Apparent temperature cutoff (°C)")+
   theme_plots
 
-p1_water<- ggplot(filter(w_cutoffs, quantile==95), 
+p1_water<- ggplot(filter(w_cutoffs, quantile==90), 
                   aes(x=date_, y=cutoff, color=Location))+
   geom_line(position=position_dodge(width=0.4), linewidth = 1)+
   scale_color_viridis_d(name="", option = "turbo")+
@@ -387,7 +382,7 @@ dev.off()
 
 # Frequency plots
 ```{r, fig.height=9, fig.width=10}
-(p2_air<-ggplot(filter(air_heatwave_sum_month, quantile==95), aes(x=Month, y=heatwave_freq, fill=Location))+
+(p2_air<-ggplot(filter(air_heatwave_sum_month, quantile==90), aes(x=Month, y=heatwave_freq, fill=Location))+
   geom_bar(position=position_dodge(), stat = "identity")+
   scale_y_continuous(expand=expansion(0,0))+
   scale_fill_viridis_d(name="")+
@@ -395,7 +390,7 @@ dev.off()
   guides(fill = guide_legend(nrow = 2, byrow = TRUE)) +
     theme_plots)
 
-(p2_water<-ggplot(filter(w_heatwave_sum_month, quantile==95), aes(x=Month, y=heatwave_freq, fill=Location))+
+(p2_water<-ggplot(filter(w_heatwave_sum_month, quantile==90), aes(x=Month, y=heatwave_freq, fill=Location))+
   geom_bar(position=position_dodge(), stat = "identity")+
   scale_y_continuous(expand=expansion(0,0))+
   scale_fill_viridis_d(name="", option = "turbo")+
@@ -403,7 +398,7 @@ dev.off()
   guides(fill = guide_legend(nrow = 4, byrow = TRUE)) +
   theme_plots)
 
-(p2<-ggplot(filter(heatwave_sum_month, quantile==95), aes(x=Month, y=heatwave_freq, fill=Location))+
+(p2<-ggplot(filter(heatwave_sum_month, quantile==90), aes(x=Month, y=heatwave_freq, fill=Location))+
   geom_bar(position=position_dodge(), stat = "identity")+
   scale_y_continuous(expand=expansion(0,0))+
   scale_fill_viridis_d(name="", option = "turbo")+
@@ -418,7 +413,7 @@ dev.off()
 # dev.off()
 
 
-(p3_air<-ggplot(filter(air_heatwave_sum_year, quantile==95), aes(x=Year, y=heatwave_freq, fill=Location, color=Location))+
+(p3_air<-ggplot(filter(air_heatwave_sum_year, quantile==90), aes(x=Year, y=heatwave_freq, fill=Location, color=Location))+
     geom_bar(position=position_dodge(), alpha = 0.7, stat = "identity")+
     geom_smooth(method="lm", se=F, show.legend = FALSE, size = 0.6)+
     scale_y_continuous(expand=expansion(0,0))+
@@ -428,7 +423,7 @@ dev.off()
   guides(color = guide_legend(nrow = 2, byrow = TRUE)) +
     theme_plots)
 
-(p3_water<-ggplot(filter(w_heatwave_sum_year, quantile==95), aes(x=Year, y=heatwave_freq, fill=Location, color=Location))+
+(p3_water<-ggplot(filter(w_heatwave_sum_year, quantile==90), aes(x=Year, y=heatwave_freq, fill=Location, color=Location))+
     geom_bar(position=position_dodge(), alpha = 0.7, stat = "identity")+
     geom_smooth(method="lm", se=F, show.legend = FALSE, size = 0.6)+
     scale_y_continuous(expand=expansion(0,0))+
@@ -534,7 +529,7 @@ dev.off()
 
 # Intensity plots
 ```{r}
-(p5_air <- ggplot(filter(air_temp_intensity, heatwave_95==1L), 
+(p5_air <- ggplot(filter(air_temp_intensity, heatwave_90), 
       aes(x=Year, y=meanIntensity, ymin = meanIntensity - sd, ymax = meanIntensity + sd, 
            color=Location, group=interaction(Year, Location)))+
   geom_pointrange(shape = 17) +
@@ -545,7 +540,7 @@ dev.off()
     labs(title = "A", y = "Air Heatwave Intensity")+
   theme_plots)
 
-(p5_water <- ggplot(filter(w_temp_intensity, heatwave_95==1L), 
+(p5_water <- ggplot(filter(w_temp_intensity, heatwave_90), 
        aes(x=Year, y=meanIntensity, ymin = meanIntensity - sd, ymax = meanIntensity + sd, 
            color=Location, group=interaction(Year, Location)))+
   geom_pointrange(shape = 17)+
@@ -556,7 +551,7 @@ dev.off()
     labs(title = "B", y = "Water Heatwave Intensity")+
   theme_plots)
 
-(p6_air <- ggplot(filter(air_intensity_month, heatwave_95==1L), 
+(p6_air <- ggplot(filter(air_intensity_month, heatwave_90), 
       aes(x=Month, y=meanIntensity, ymin = meanIntensity - sd, ymax = meanIntensity + sd, 
            color=Location, group=interaction(Month, Location)))+
   geom_pointrange(shape = 17) +
@@ -567,7 +562,7 @@ dev.off()
     labs(title = "A", y = "Air Heatwave Intensity")+
   theme_plots)
 
-(p6_water <- ggplot(filter(w_intensity_month, heatwave_95==1L), 
+(p6_water <- ggplot(filter(w_intensity_month, heatwave_90), 
          aes(x=fMonth, y=meanIntensity, ymin = meanIntensity - sd, ymax = meanIntensity + sd, 
            color=Location, group=interaction(fMonth, Location)))+
   geom_pointrange(shape = 17)+
@@ -613,8 +608,8 @@ dev.off()
 # Summary tables
 ## Cutoffs
 ```{r}
-cutoffs_95 <- filter(cutoffs, quantile == 95)
-cutoffs_summary <- cutoffs_95 %>% 
+cutoffs_90 <- filter(cutoffs, quantile == 90)
+cutoffs_summary <- cutoffs_90 %>% 
   group_by(Medium, month) %>%
   summarize(mean = mean(cutoff),
             se = sd(cutoff)/sqrt(n()))
@@ -623,7 +618,7 @@ cutoffs_summary <- cutoffs_95 %>%
 ## Frequency
 ```{r}
 freq_month <- heatwave_sum_month %>%
-  filter(quantile == 95) %>%
+  filter(quantile == 90) %>%
   mutate(days = n*heatwave_freq) %>%
   group_by(Medium) %>%
   mutate(mean_overall = mean(heatwave_freq, na.rm = TRUE)) %>%
@@ -689,30 +684,30 @@ duration_year_table <- duration %>%
 ## Intensity
 ```{r}
 int_month_w <- w_temp %>%
-  mutate(mean_overall = mean(heatwave_95_intensity, na.rm = TRUE),
-         sd_overall = sd(heatwave_95_intensity, na.rm = TRUE)) %>%
+  mutate(mean_overall = mean(heatwave_90_intensity, na.rm = TRUE),
+         sd_overall = sd(heatwave_90_intensity, na.rm = TRUE)) %>%
   group_by(fMonth, mean_overall, sd_overall) %>%
-  reframe(mean = mean(heatwave_95_intensity, na.rm = TRUE),
-          sd = sd(heatwave_95_intensity, na.rm = TRUE))
+  reframe(mean = mean(heatwave_90_intensity, na.rm = TRUE),
+          sd = sd(heatwave_90_intensity, na.rm = TRUE))
 int_month_a <- air_temp %>%
-  mutate(mean_overall = mean(heatwave_95_intensity, na.rm = TRUE),
-         sd_overall = sd(heatwave_95_intensity, na.rm = TRUE)) %>%
+  mutate(mean_overall = mean(heatwave_90_intensity, na.rm = TRUE),
+         sd_overall = sd(heatwave_90_intensity, na.rm = TRUE)) %>%
   group_by(Month, mean_overall, sd_overall) %>%
-  reframe(mean = mean(heatwave_95_intensity, na.rm = TRUE),
-          sd = sd(heatwave_95_intensity, na.rm = TRUE))
+  reframe(mean = mean(heatwave_90_intensity, na.rm = TRUE),
+          sd = sd(heatwave_90_intensity, na.rm = TRUE))
 
 
 int_year_w <- w_temp %>%
   group_by(Year) %>%
-  reframe(mean = mean(heatwave_95_intensity, na.rm = TRUE),
-          se = sd(heatwave_95_intensity, na.rm = TRUE)/sqrt(n()),
-          median = median(heatwave_95_intensity, na.rm = TRUE)) %>%
+  reframe(mean = mean(heatwave_90_intensity, na.rm = TRUE),
+          se = sd(heatwave_90_intensity, na.rm = TRUE)/sqrt(n()),
+          median = median(heatwave_90_intensity, na.rm = TRUE)) %>%
   arrange(mean)
 int_year_a <- air_temp %>%
   group_by(Year) %>%
-  reframe(mean = mean(heatwave_95_intensity, na.rm = TRUE),
-          se = sd(heatwave_95_intensity, na.rm = TRUE)/sqrt(n()),
-          median = median(heatwave_95_intensity, na.rm = TRUE)) %>%
+  reframe(mean = mean(heatwave_90_intensity, na.rm = TRUE),
+          se = sd(heatwave_90_intensity, na.rm = TRUE)/sqrt(n()),
+          median = median(heatwave_90_intensity, na.rm = TRUE)) %>%
   arrange(mean)
 ```
 

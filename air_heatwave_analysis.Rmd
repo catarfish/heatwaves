@@ -104,14 +104,15 @@ temp_appt<-temp_appt_raw%>%
   mutate(heatwave_99=heatwave_detector(temp_appt, temp_appt_q99),
          heatwave_95=heatwave_detector(temp_appt, temp_appt_q95),
          heatwave_90=heatwave_detector(temp_appt, temp_appt_q90),
-         heatwave_95_intensity=if_else(heatwave_95, temp_appt/temp_appt_q95, NA))%>%
+         heatwave_95_intensity=if_else(heatwave_95, temp_appt/temp_appt_q95, NA),
+         heatwave_90_intensity=if_else(heatwave_90, temp_appt/temp_appt_q90, NA))%>%
   ungroup()%>%
   mutate(Month=month(Month, label=T))%>%
   arrange(major_city, date)
 
 # identifying contiguous 95% heatwave days to estimate duration
 heatwave_dur<-temp_appt%>%
-  filter(heatwave_95)%>%
+  filter(heatwave_90)%>%
   group_by(major_city)%>%
   mutate(Lag=date-lag(date, order_by = date))%>%
   ungroup()%>%
@@ -124,11 +125,10 @@ heatwave_dur<-temp_appt%>%
   summarise(duration=n(),
             Date=min(date),
             temp_appt_mean=mean(temp_appt),
-            intensity_mean=mean(heatwave_95_intensity),
+            intensity_mean=mean(heatwave_90_intensity),
             .groups="drop")%>%
   mutate(Month=month(Date, label=T),
-         Year=year(Date),
-         duration=if_else(duration<3, 3, duration))
+         Year=year(Date))
 
 heatwave_dur_year<-heatwave_dur%>%
   group_by(Year, major_city)%>%
@@ -177,7 +177,7 @@ cutoffs<-temp_appt%>%
 # Model changes over years
 ```{r}
 model_dat<-heatwave_sum_year%>%
-  filter(quantile==95)%>%
+  filter(quantile==90)%>%
   mutate(Year_s=(Year-mean(Year))/sd(Year))
 
 mf1<-lm(heatwave_freq ~ Year_s*major_city, data=model_dat)
@@ -338,8 +338,8 @@ ggplot(heatwave_dur_year, aes(x=Year, y=duration_mean, ymin=duration_mean-durati
 
 By Month
 ```{r}
-ggplot(filter(temp_appt, heatwave_95), 
-       aes(x=Month, y=heatwave_95_intensity, fill=major_city, group=interaction(Month, major_city)))+
+ggplot(filter(temp_appt, heatwave_90), 
+       aes(x=Month, y=heatwave_90_intensity, fill=major_city, group=interaction(Month, major_city)))+
   geom_boxplot()+
   scale_fill_viridis_d(name="City")+
   theme_bw()
@@ -347,8 +347,8 @@ ggplot(filter(temp_appt, heatwave_95),
 
 By Year
 ```{r}
-ggplot(filter(temp_appt, heatwave_95), 
-       aes(x=Year, y=heatwave_95_intensity, fill=major_city, group=interaction(Year, major_city)))+
+ggplot(filter(temp_appt, heatwave_90), 
+       aes(x=Year, y=heatwave_90_intensity, fill=major_city, group=interaction(Year, major_city)))+
   geom_boxplot()+
   scale_fill_viridis_d(name="City")+
   theme_bw()
@@ -359,7 +359,7 @@ ggplot(filter(temp_appt, heatwave_95),
 Temp cutoffs
 
 ```{r}
-p<-ggplot(filter(cutoffs, quantile==95), aes(x=doy, y=cutoff, color=major_city, group=major_city))+
+p<-ggplot(filter(cutoffs, quantile==90), aes(x=doy, y=cutoff, color=major_city, group=major_city))+
   geom_line(alpha=0.8)+
   scale_color_viridis_d(name="")+
   ylab("Apparent temperature cutoff (°C)")+
@@ -373,7 +373,7 @@ ggsave(plot=p, file="figs/air apparent temperature cutoffs.png", height=5, width
 
 Results
 ```{r, fig.height=9, fig.width=10}
-p_y<-ggplot(filter(heatwave_sum_month, quantile==95), aes(x=Month, y=heatwave_freq, fill=major_city))+
+p_y<-ggplot(filter(heatwave_sum_month, quantile==90), aes(x=Month, y=heatwave_freq, fill=major_city))+
   geom_bar(position=position_dodge(), stat = "identity")+
   scale_y_continuous(expand=expansion(0,0))+
   scale_fill_viridis_d(name="")+
@@ -381,7 +381,7 @@ p_y<-ggplot(filter(heatwave_sum_month, quantile==95), aes(x=Month, y=heatwave_fr
   theme_bw()+
   theme(axis.text.x=element_text(angle=45, hjust=1), legend.position = "bottom")
 
-p_m<-ggplot(filter(heatwave_sum_year, quantile==95), aes(x=Year, y=heatwave_freq, fill=major_city, color=major_city))+
+p_m<-ggplot(filter(heatwave_sum_year, quantile==90), aes(x=Year, y=heatwave_freq, fill=major_city, color=major_city))+
   geom_bar(position=position_dodge(), stat = "identity")+
   geom_smooth(method="lm", se=F, show.legend = FALSE)+
   scale_y_continuous(expand=expansion(0,0))+
@@ -406,5 +406,5 @@ city_boundaries<-zctas(starts_with = zips$zipcode)%>%
   st_transform(crs=26910)
 
 st_write(city_boundaries, "shapefiles/SBDS city boundaries/SBDS city boundaries.shp", delete_dsn=TRUE)
-# save(cutoffs, temp_appt, heatwave_sum_month, heatwave_sum_year, heatwave_dur, heatwave_dur_year, temp_appt, file = here::here("data_clean/air_temp_data_for_plots.Rdata"))
+save(cutoffs, temp_appt, heatwave_sum_month, heatwave_sum_year, heatwave_dur, heatwave_dur_year, temp_appt, file = here::here("data_clean/air_temp_data_for_plots.Rdata"))
 ```

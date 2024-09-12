@@ -1,0 +1,7 @@
+term,estimate,std.error,statistic,p.value
+(Intercept),-2.4003,0.6288,-3.8175,0.0002
+Year,0.0012,0.0003,3.8862,0.0002
+LocationIsleton,0.0003,0.0068,0.0496,0.9606
+LocationWest Sacramento,0.0038,0.0068,0.5500,0.5834
+LocationSacramento,0.0024,0.0068,0.3496,0.7273
+LocationStockton,0.0033,0.0068,0.4832,0.6299

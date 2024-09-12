@@ -68,6 +68,22 @@ dailytemp_wide<-dailytemp%>%
          doy=yday(date))
 ```
 
+## plot missing values
+```{r fig.width=12}
+# Number of missing values
+nrow(filter(dailytemp, is.na(temp_max)))
+# proportion of missing values
+nrow(filter(dailytemp, is.na(temp_max)))/nrow(dailytemp)
+
+missing_plot<-function(station, data){
+  
+p<-ggplot_na_gapsize(filter(data, Station==station)$temp_max)+ggtitle(station)
+print(p)
+}
+
+walk(stations, missing_plot, data=dailytemp)
+```
+
 ## imputation
 ```{r fig.width=12}
 dailytemp_imp<-dailytemp%>%
@@ -97,6 +113,16 @@ print(p)
 }
 
 walk(stations, imp_plot)
+```
+
+## Plot missing after imputation
+```{r}
+# Number of missing values
+nrow(filter(dailytemp_imp, is.na(temp_max)))
+# proportion of missing values
+nrow(filter(dailytemp_imp, is.na(temp_max)))/nrow(dailytemp_imp)
+
+walk(stations, missing_plot, data=dailytemp_imp)
 ```
 
 

@@ -117,6 +117,8 @@ png("figs/map_temperature_stations_v2.png", height = 7, width = 8, units = "in",
     res=300)
 map
 dev.off()
+
+ggsave(plot=map, file=here::here("figs/Figure 1 map_temperature_stations_v2.pdf"), height = 7, width = 8, units = "in", dpi = 300)
 ```
 
 
@@ -400,6 +402,8 @@ p1_water<- ggplot(filter(w_cutoffs, quantile==90),
 png(file=here::here("figs/temperature_cutoffs.png"), height=7, width=8, units = "in", res = 300, pointsize = 14)
 p1
 dev.off()
+
+ggsave(plot=p1, file=here::here("figs/Figure 3 temperature_cutoffs.pdf"), height=7, width=8, units = "in", dpi = 300, pointsize = 14)
 ```
 
 # Frequency plots
@@ -458,7 +462,7 @@ png(file=here::here("figs/heatwave_freq.png"), height=7.5, width=11, units = "in
 p2p3
 dev.off()
 
-
+ggsave(plot=p2p3, file=here::here("figs/Figure 4 heatwave_freq.pdf"), height=7.5, width=11, units = "in", dpi = 300, pointsize = 10)
 ```
 
 
@@ -492,6 +496,8 @@ dev.off()
 png(file=here::here("figs/duration_year.png"), height=10, width=10, units = "in", res = 300, pointsize = 14)
 p4
 dev.off()
+
+ggsave(plot=p4, file=here::here("figs/Figure 8 duration_year.pdf"), height=10, width=10, units = "in", dpi = 300, pointsize = 14)
 
 duration_month <- duration %>%
   group_by(Medium, Location) %>%
@@ -535,6 +541,7 @@ p4b
 dev.off()
 
 
+ggsave(plot=p4b, file=here::here("figs/Figure 7 duration_months.pdf"), height=10, width=10, units = "in", dpi = 300, pointsize = 14)
 
 ```
 
@@ -607,12 +614,16 @@ png(file=here::here("figs/intensity_year.png"), height=10, width=10, units = "in
 p5
 dev.off()
 
+ggsave(plot=p5, file=here::here("figs/Figure 6 intensity_year.pdf"), height=10, width=10, units = "in", dpi = 300, pointsize = 14)
+
 
 (p6 <- p6_air / p6_water + plot_layout(heights = c(2,3)))
 
 png(file=here::here("figs/intensity_month.png"), height=10, width=10, units = "in", res = 300, pointsize = 14)
 p6
 dev.off()
+
+ggsave(plot=p6, file=here::here("figs/Figure 5 intensity_month.pdf"), height=10, width=10, units = "in", dpi = 300, pointsize = 14)
 
 ```
 
